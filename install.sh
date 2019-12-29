@@ -66,9 +66,17 @@ gem install lolcat
 
 
 
-echo "oh-my-config install complete!\nChoose your color scheme now~ (Default the best)"
+echo "oh-my-config install complete!"
+echo ''
+echo ''
+echo "Choose your color scheme now~ (Default the best)"
+echo ''
+chmod +x $HOME/.termux/colors.sh $HOME/.termux/fonts.sh
 $HOME/.termux/colors.sh
+echo ''
 echo "Choose your font now~ (Meslo the best)"
 $HOME/.termux/fonts.sh
 
+echo ''
+echo ''
 echo "Please restart Termux app..."
