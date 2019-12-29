@@ -11,6 +11,22 @@ Installs:
 * My .zlogin, .logout files
 * My functions and aliases
 * And other
+Packages:
+* root-repo - Termux repository for root
+* curl, wget, git, man
+* tsu           - `su` wrapper for termux
+* micro         - Text editor
+* ncurses-utils - Tool for working with terminals
+* nodejs, python, ruby - Programming languages
+* tree      - Recursive directory lister
+* htop      - Process viewer
+* mc        - Midnight Commander - file manager
+* unrar     - Tool for extraction files from .rar
+* zip       - Tools for working with .zip
+* jq        - JSON processor
+* nnn       - File browser
+* figlet    - Program for making large letters out of ordinary text
+* cowsay    - Program which generates ASCII pictures of a cow with a message
 
 ## Install:
 ```shell

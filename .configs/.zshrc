@@ -18,13 +18,14 @@ COMPLETION_WAITING_DOTS=true # Display red dots whilst waiting for completion
 # ZSH_AUTOSUGGEST_STRATEGY=( completion history ) # [HARD]
 DISABLE_AUTO_TITLE=false
 DISABLE_LS_COLORS=false
-ZSH_THEME="agnoster2"
+ZSH_THEME="custom"
 
 plugins=(
 	# git
 	# zsh-syntax-highlighting
 	fast-syntax-highlighting
 	zsh-autosuggestions
+	zsh-completions
 	extract
 	last-working-dir
 )
