@@ -13,6 +13,5 @@
 	fi
 	
 	alias grep="grep $GREP_OPTIONS"
-	
 	unfunction grep-flag-available
 }

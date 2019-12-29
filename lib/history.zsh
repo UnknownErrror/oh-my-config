@@ -1,4 +1,4 @@
-function omz_history {
+function omz_history() {
 	local clear list
 	zparseopts -E c=clear l=list
 	
@@ -19,7 +19,7 @@ case ${HIST_STAMPS-} in # Timestamp format
 	*)            alias history="omz_history -t '$HIST_STAMPS'" ;;
 esac
 
-[ -z "$HISTFILE" ] && HISTFILE="$HOME/.zsh_history"
+[ -z "$HISTFILE" ] && HISTFILE="$HOME/.zhistory"
 HISTSIZE=50000
 SAVEHIST=10000
 

@@ -1,9 +1,3 @@
-function alias_value() {
-	(( $+aliases[$1] )) && echo $aliases[$1]
-}
-function try_alias_value() {
-	alias_value "$1" || echo "$1"
-}
 function default() { # cmd <name> <default_value>
 	(( $+parameters[$1] )) && return 0
 	typeset -g "$1"="$2" && return 3
@@ -69,7 +63,7 @@ function omz_urlencode() {
 	done
 	echo -E "$url_str"
 }
-function omz_urldecode {
+function omz_urldecode() {
 	emulate -L zsh
 	local encoded_url=$1
 
