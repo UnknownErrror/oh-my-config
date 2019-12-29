@@ -70,7 +70,7 @@ prompt_aws() { # [-] AWS Profile: (Current AWS_PROFILE, yellow on red if product
 }
 
 
-exit_code_or_status() {
+function exit_code_or_status() {
 	local RETVAL=$1
 	if (( $RETVAL <= 128 )); then
 		echo "$RETVAL"
@@ -147,9 +147,39 @@ prompt_context() { # Context: (<user>@<hostname> (ssh) / <user>@<hostname>)
 	fi
 }
 
+function pwd_abbr() {
+	tilda_notation=${PWD//$HOME/\~}
+	pwd_list=(${(s:/:)tilda_notation})
+	list_len=${#pwd_list}
+	
+	if [[ $list_len -le 1 ]]; then
+		echo $tilda_notation
+		return
+	fi
+	
+	[[ ${pwd_list[1]} != '~' ]] && formed_pwd='/'
+	firstchar=$(echo ${pwd_list[1]} | cut -c1)
+	[[ $firstchar == '.' ]] && firstchar=$(echo ${pwd_list[1]} | cut -c1,2)
+	
+	formed_pwd=${formed_pwd}$firstchar
+	for ((i=2; i <= $list_len; i++)); do
+		if [[ $i != ${list_len} ]]; then
+			firstchar=$(echo ${pwd_list[$i]} | cut -c1)
+			[[ $firstchar == '.' ]] && firstchar=$(echo ${pwd_list[$i]} | cut -c1,2)
+			formed_pwd=${formed_pwd}/$firstchar
+		else
+			formed_pwd=${formed_pwd}/${pwd_list[$i]}
+		fi
+	done
+	echo $formed_pwd
+}
 prompt_dir() { # Dir: (Current Working Directory)
 	prompt_segment blue $CURRENT_FG '%~'
 }
+prompt_dir_abbr() { # Dir: (Current Working Directory)
+	prompt_segment blue $CURRENT_FG $(pwd_abbr)
+}
+
 prompt_dir_rw_status() { # Dir RW status: (RO / WO / *LOCKED*)
 	local r w
 	[[ -r "$PWD" ]] && r=true || r=false
