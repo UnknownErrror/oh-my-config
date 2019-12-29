@@ -23,10 +23,10 @@ cd $HOME
 ZSH=$HOME/.oh-my-config
 
 git clone https://github.com/UnknownErrror/oh-my-config.git $ZSH --depth 1
-mv -vR $ZSH/.termux $HOME
-mv -vR $ZSH/.configs/.zshrc $HOME/
-mv -vR $ZSH/.configs/.zlogin $HOME/
-mv -vR $ZSH/.configs/.zlogout $HOME/
+mv -v --backup $ZSH/.termux $HOME
+mv -v --backup $ZSH/.configs/.zshrc $HOME/
+mv -v --backup $ZSH/.configs/.zlogin $HOME/
+mv -v --backup $ZSH/.configs/.zlogout $HOME/
 
 git clone https://github.com/zdharma/fast-syntax-highlighting.git  $ZSH/custom/plugins/fast-syntax-highlighting --depth 1
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH/custom/plugins/zsh-syntax-highlighting --depth 1
