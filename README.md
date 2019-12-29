@@ -3,14 +3,14 @@
 Created by me for myself
 
 Installs:
-My (backward-incompatible) alternative to [oh-my-zsh](https://github.com/robbyrussell/oh-my-zsh) terminal environment
-[fast-syntax-highlighting](https://github.com/zdharma/fast-syntax-highlighting) plugin
-[zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions) plugin
-My theme: agnoster2 (temporary name)
-My .zshrc config
-My .zlogin, .logout files
-My functions and aliases
-And other
+* My (backward-incompatible) alternative to [oh-my-zsh](https://github.com/robbyrussell/oh-my-zsh) terminal environment
+* [fast-syntax-highlighting](https://github.com/zdharma/fast-syntax-highlighting) plugin
+* [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions) plugin
+* My theme: agnoster2 (temporary name)
+* My .zshrc config
+* My .zlogin, .logout files
+* My functions and aliases
+* And other
 
 ## Install:
 ```shell
