@@ -1,12 +1,5 @@
 # [Functions]:
 
-function ..() { # .. [count=1]
-	count=${1:-1}
-	for ((i=$count; i > 0; i = i - 1)); do
-		cd ..
-	done
-}
-
 function repeat0() { # repeat <count> <command>
 	local i max
 	max=$1; shift;

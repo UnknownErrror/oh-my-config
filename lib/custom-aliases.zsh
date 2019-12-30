@@ -17,16 +17,21 @@ alias tree0='tree -aF'
 alias tree1='tree -apughF'
 alias ll='ls -lAFh' # long-list (l), almost-all (A), show type (F), human-readable sizes (h)
 alias lsa='ls -AF' # almost-all (A), show type (F)
+
+alias ll0='exa -alFhg --color=auto --color-scale --git'
+
 # alias img='termimage'
-alias json='jq'
+# alias json='jq'
 alias edit='${=EDITOR}'
 alias zshrc='${=EDITOR} ~/.zshrc' # Quick access to the ~/.zshrc file
+alias pass=':'
 
 
 alias rld='exec $SHELL -l'
 alias install='pkg install'
 alias finstall='apt install'
 alias uninstall='pkg uninstall'
+alias showpkg='apt show'
 
 alias clr='clear'
 alias q='exit'
@@ -53,3 +58,8 @@ alias mountro='mount -o remount,ro'
 # Command line head / tail shortcuts
 alias -g NE="2> /dev/null"
 alias -g NUL="> /dev/null 2>&1"
+
+
+alias b64e='base64'
+alias b64e='base64 --decode'
+alias path='print -l $path'

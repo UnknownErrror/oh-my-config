@@ -23,13 +23,13 @@ cd $HOME
 ZSH=$HOME/.oh-my-config
 
 git clone https://github.com/UnknownErrror/oh-my-config.git $ZSH --depth 1
-mv -v --backup $ZSH/.termux $HOME
-mv -v --backup $ZSH/.configs/.zshrc $HOME/
-mv -v --backup $ZSH/.configs/.zlogin $HOME/
-mv -v --backup $ZSH/.configs/.zlogout $HOME/
+cp -vR $ZSH/.termux $HOME
+cp -vR $ZSH/.configs/.zshrc $HOME/
+cp -vR $ZSH/.configs/.zlogin $HOME/
+cp -vR $ZSH/.configs/.zlogout $HOME/
 
 git clone https://github.com/zdharma/fast-syntax-highlighting.git  $ZSH/custom/plugins/fast-syntax-highlighting --depth 1
-git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH/custom/plugins/zsh-syntax-highlighting --depth 1
+# git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH/custom/plugins/zsh-syntax-highlighting --depth 1
 git clone https://github.com/zsh-users/zsh-autosuggestions.git     $ZSH/custom/plugins/zsh-autosuggestions --depth 1
 git clone https://github.com/zsh-users/zsh-completions.git         $ZSH/custom/plugins/zsh-completions --depth 1
 chsh -s zsh
@@ -43,7 +43,7 @@ apt install -y nodejs python ruby
 # apt install -y clang python-dev # Python development
 python -m pip install --upgrade pip
 
-apt install -y tree htop mc unrar zip jq nnn
+apt install -y tree htop mc unrar zip jq nnn exa
 # tree      - Recursive directory lister
 # htop      - Process viewer
 # mc        - Midnight Commander - file manager

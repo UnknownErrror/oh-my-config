@@ -28,6 +28,16 @@ plugins=(
 	zsh-completions
 	extract
 	last-working-dir
+
+	adb
+	pip
+	gem
+	node
+	colored-man-pages
+	jump
+	gitfast
+	themes
+	timer
 )
 source $ZSH/zsh-init.zsh # [REQ]
 
@@ -55,11 +65,11 @@ DIRSTACKSIZE=20
 
 ### Changing dirs:
 # setopt AUTO_CD # theme-and-appereance.zsh
-setopt AUTO_PUSHD
+# setopt AUTO_PUSHD # directories.zsh
 setopt CHASE_DOTS
 unsetopt CHASE_LINKS
-setopt PUSHD_IGNORE_DUPS
-setopt PUSHD_MINUS # Exchanges the meanings of `+` and `-` when used with a number to specify a directory in the stack.
+# setopt PUSHD_IGNORE_DUPS # directories.zsh
+# setopt PUSHD_MINUS # directories.zsh
 unsetopt PUSHD_SILENT
 setopt PUSHD_TO_HOME
 
@@ -137,8 +147,6 @@ setopt LOCAL_LOOPS
 ### Zle:
 setopt BEEP
 
-source $ZSH/.configs/aliases.zsh
-source $ZSH/.configs/functions.zsh
 
 # [INIT]
 
@@ -154,5 +162,4 @@ autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
 
-autoload tetris
 

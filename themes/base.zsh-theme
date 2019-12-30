@@ -173,10 +173,10 @@ function pwd_abbr() {
 	done
 	echo $formed_pwd
 }
-prompt_dir() { # Dir: (Current Working Directory)
+prompt_dir() { # Dir: (PWD)
 	prompt_segment blue $CURRENT_FG '%~'
 }
-prompt_dir_abbr() { # Dir: (Current Working Directory)
+prompt_dir_abbr() { # Dir (Abbreviated): (PWD)
 	prompt_segment blue $CURRENT_FG $(pwd_abbr)
 }
 
@@ -289,9 +289,9 @@ prompt_hg() {  # [-] Mercurial
 }
 
 
-prompt_end_chars() { # Prompt newlie and ending characters ([$]> / [#]>)
+prompt_end_chars() { # Prompt newlie and ending characters ($ / #)
 	echo ''
-	[[ $UID -eq 0 ]] && echo -n ' [#]>' || echo -n ' [$]>'
+	[[ $UID -eq 0 ]] && echo -n ' #' || echo -n ' $'
 }
 
 build_prompt() {
