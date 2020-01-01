@@ -58,8 +58,13 @@ alias mountro='mount -o remount,ro'
 # Command line head / tail shortcuts
 alias -g NE="2> /dev/null"
 alias -g NUL="> /dev/null 2>&1"
+alias -g EXPR=" && echo 1 || echo 0"
 
 
 alias b64e='base64'
 alias b64e='base64 --decode'
 alias path='print -l $path'
+alias sd='cd /sdcard/'
+alias home='cd $HOME/'
+alias ffix='~/tmux ffix'
+alias tupd='~/tmux upd'
