@@ -11,6 +11,7 @@ Installs:
 * My .zlogin, .logout files
 * My functions and aliases
 * And other
+
 Packages:
 * root-repo - Termux repository for root
 * curl, wget, git, man
