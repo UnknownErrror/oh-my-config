@@ -267,199 +267,18 @@ prompt_date() { # System date
 }
 
 
-prompt_git() {
-#«»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂▸◄►◆☀★☗☊✔✖❮❯⚑⚙
-  local PL_BRANCH_CHAR
-  () {
-    local LC_ALL="" LC_CTYPE="en_US.UTF-8"
-    PL_BRANCH_CHAR="$BRANCH"
-  }
-  local ref dirty mode repo_path clean has_upstream
-  local modified untracked added deleted tagged stashed
-  local ready_commit git_status bgclr fgclr
-  local commits_diff commits_ahead commits_behind has_diverged to_push to_pull
-
-  repo_path=$(git rev-parse --git-dir 2>/dev/null)
-
-  if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-    dirty=$(parse_git_dirty)
-    git_status=$(git status --porcelain 2> /dev/null)
-    ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="➦ $(git rev-parse --short HEAD 2> /dev/null)"
-    if [[ -n $dirty ]]; then
-      clean=''
-      bgclr='yellow'
-      fgclr='magenta'
-    else
-      clean=' ✔'
-      bgclr='green'
-      fgclr='white'
-    fi
-
-    local upstream=$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)
-    if [[ -n "${upstream}" && "${upstream}" != "@{upstream}" ]]; then has_upstream=true; fi
-
-    local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
-
-    local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}")
-    # if [[ $number_of_untracked_files -gt 0 ]]; then untracked=" $number_of_untracked_files◆"; fi
-    if [[ $number_of_untracked_files -gt 0 ]]; then untracked=" $number_of_untracked_files☀"; fi
-
-    local number_added=$(\grep -c "^A" <<< "${git_status}")
-    if [[ $number_added -gt 0 ]]; then added=" $number_added✚"; fi
-
-    local number_modified=$(\grep -c "^.M" <<< "${git_status}")
-    if [[ $number_modified -gt 0 ]]; then
-      modified=" $number_modified●"
-      bgclr='red'
-      fgclr='white'
-    fi
-
-    local number_added_modified=$(\grep -c "^M" <<< "${git_status}")
-    local number_added_renamed=$(\grep -c "^R" <<< "${git_status}")
-    if [[ $number_modified -gt 0 && $number_added_modified -gt 0 ]]; then
-      modified="$modified$((number_added_modified+number_added_renamed))±"
-    elif [[ $number_added_modified -gt 0 ]]; then
-      modified=" ●$((number_added_modified+number_added_renamed))±"
-    fi
-
-    local number_deleted=$(\grep -c "^.D" <<< "${git_status}")
-    if [[ $number_deleted -gt 0 ]]; then
-      deleted=" $number_deleted‒"
-      bgclr='red'
-      fgclr='white'
-    fi
-
-    local number_added_deleted=$(\grep -c "^D" <<< "${git_status}")
-    if [[ $number_deleted -gt 0 && $number_added_deleted -gt 0 ]]; then
-      deleted="$deleted$number_added_deleted±"
-    elif [[ $number_added_deleted -gt 0 ]]; then
-      deleted=" ‒$number_added_deleted±"
-    fi
-
-    local tag_at_current_commit=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
-    if [[ -n $tag_at_current_commit ]]; then tagged=" ☗$tag_at_current_commit "; fi
-
-    local number_of_stashes="$(git stash list -n1 2> /dev/null | wc -l)"
-    if [[ $number_of_stashes -gt 0 ]]; then
-      stashed=" ${number_of_stashes##*(  )}⚙"
-      bgclr='magenta'
-      fgclr='white'
-    fi
-
-    if [[ $number_added -gt 0 || $number_added_modified -gt 0 || $number_added_deleted -gt 0 ]]; then ready_commit=' ⚑'; fi
-
-    local upstream_prompt=''
-    if [[ $has_upstream == true ]]; then
-      commits_diff="$(git log --pretty=oneline --topo-order --left-right ${current_commit_hash}...${upstream} 2> /dev/null)"
-      commits_ahead=$(\grep -c "^<" <<< "$commits_diff")
-      commits_behind=$(\grep -c "^>" <<< "$commits_diff")
-      upstream_prompt="$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)"
-      upstream_prompt=$(sed -e 's/\/.*$/ ☊ /g' <<< "$upstream_prompt")
-    fi
-
-    has_diverged=false
-    if [[ $commits_ahead -gt 0 && $commits_behind -gt 0 ]]; then has_diverged=true; fi
-    if [[ $has_diverged == false && $commits_ahead -gt 0 ]]; then
-      if [[ $bgclr == 'red' || $bgclr == 'magenta' ]] then
-        to_push=" $fg_bold[white]↑$commits_ahead$fg_bold[$fgclr]"
-      else
-        to_push=" $fg_bold[black]↑$commits_ahead$fg_bold[$fgclr]"
-      fi
-    fi
-    if [[ $has_diverged == false && $commits_behind -gt 0 ]]; then to_pull=" $fg_bold[magenta]↓$commits_behind$fg_bold[$fgclr]"; fi
-
-    if [[ -e "${repo_path}/BISECT_LOG" ]]; then
-      mode=" <B>"
-    elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
-      mode=" >M<"
-    elif [[ -e "${repo_path}/rebase" || -e "${repo_path}/rebase-apply" || -e "${repo_path}/rebase-merge" || -e "${repo_path}/../.dotest" ]]; then
-      mode=" >R>"
-    fi
-
-    prompt_segment $bgclr $fgclr
-
-    print -n "%{$fg_bold[$fgclr]%}${ref/refs\/heads\//$PL_BRANCH_CHAR $upstream_prompt}${mode}$to_push$to_pull$clean$tagged$stashed$untracked$modified$deleted$added$ready_commit%{$fg_no_bold[$fgclr]%}"
-  fi
+function agnor_parse_git_dirty() { # Checks if working tree is dirty
+	local -a FLAGS=('--porcelain')
+	[[ "$DISABLE_UNTRACKED_FILES_DIRTY" == "true" ]] && FLAGS+='--untracked-files=no'
+	[[ "$GIT_STATUS_IGNORE_SUBMODULES" != "git" ]] && FLAGS+="--ignore-submodules=${GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
+	local STATUS=$(command git status ${FLAGS} 2> /dev/null | tail -n1)
+	[[ -n $STATUS ]] && return 1 || return 0
 }
-
-prompt_git() {
-  local ref dirty
-  if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-    dirty=$(parse_git_dirty)
-
-    if [[ $SHOW_STASH_SEGMENT -eq 1 ]]; then
-        stash_size=$(git stash list | wc -l | tr -d ' ')
-        if [[ stash_size -ne 0 ]]; then
-            prompt_segment white black
-            echo -n "+${stash_size}"
-        fi
-    fi
-
-	ref=$(git symbolic-ref HEAD 2> /dev/null)
-	if [[ -z $ref ]]; then
-	  detached_head=true;
-	  ref="$(git show-ref --head -s --abbrev |head -n1 2> /dev/null)";
-	  ref_symbol="➦"
-	else
-	  detached_head=false;
-	  ref=${ref/refs\/heads\//}
-	  ref_symbol=""
-	fi
-
-    remote=${$(git rev-parse --verify ${hook_com[branch]}@{upstream} --symbolic-full-name 2>/dev/null)/refs\/remotes\/}
-    if [[ -n ${remote} ]] ; then
-      ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l | tr -d ' ')
-      displayed_ahead=" (+${ahead})"
-      behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l | tr -d ' ')
-    else
-      ahead=""
-      displayed_ahead=""
-      behind=""
-    fi
-
-    if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
-      prompt_segment red black
-    else
-      if [[ -n $dirty ]]; then
-        prompt_segment yellow black
-      else
-        prompt_segment green black
-      fi
-    fi
-
-    echo -n "${ref_symbol} ${ref}${displayed_ahead}"
-
-    setopt promptsubst
-    autoload -Uz vcs_info
-
-    zstyle ':vcs_info:*' enable git
-    zstyle ':vcs_info:*' get-revision true
-    zstyle ':vcs_info:*' check-for-changes true
-    zstyle ':vcs_info:*' stagedstr '✚'
-    zstyle ':vcs_info:git:*' unstagedstr '●'
-    zstyle ':vcs_info:*' formats ' %u%c'
-    zstyle ':vcs_info:*' actionformats '%u%c'
-    vcs_info
-    echo -n "${vcs_info_msg_0_}"
-
-    # Displaying upstream dedicated segment
-    if [[ -n $remote ]]; then
-      if [[ $behind -ne 0 ]]; then
-        prompt_segment magenta white
-      else
-        prompt_segment cyan black
-      fi
-      echo -n " $remote (-$behind)"
-    fi
-  fi
-}
-
-
-prompt_git() { # Git: branch/detached head, dirty status
+prompt_git_def() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
 		local repo_path=$(git rev-parse --git-dir 2>/dev/null)
-		local dirty=$(parse_git_dirty)
+		local dirty=$(agnor_parse_git_dirty)
 		local ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="➦ $(git rev-parse --short HEAD 2> /dev/null)"
 		if [[ -n $dirty ]]; then
 			prompt_segment yellow black
@@ -484,13 +303,214 @@ prompt_git() { # Git: branch/detached head, dirty status
 		zstyle ':vcs_info:*' unstagedstr $'\u25CF' # ● # VCS_STAGED_ICON
 		zstyle ':vcs_info:*' formats ' %u%c'
 		zstyle ':vcs_info:*' actionformats ' %u%c'
-		
 		vcs_info
 		
 		local PL_BRANCH_CHAR=$'\uE0A0' #  # VCS_BRANCH_ICON
 		echo -n "${ref/refs\/heads\//$PL_BRANCH_CHAR }${vcs_info_msg_0_%% }${mode}"
 	fi
 }
+
+
+
+
+
+prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂▸◄►◆☀★☗☊✔✖❮❯⚑⚙
+	local mode clean
+	local modified untracked added deleted tagged stashed
+	local ready_commit git_status bgclr fgclr
+	local commits_diff commits_ahead commits_behind has_diverged to_push to_pull
+
+	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+		if [[ -n $dirty ]]; then
+			clean=''
+			bgclr='yellow'
+			fgclr='white'
+		else
+			clean=" $(print_icon OK_ICON)" # ✔
+			bgclr='green'
+			fgclr='white'
+		fi
+
+		local upstream=$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)
+		local has_upstream=false
+		[[ -n "${upstream}" && "${upstream}" != "@{upstream}" ]] && has_upstream=true
+
+		local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
+
+		local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}")
+		# if [[ $number_of_untracked_files -gt 0 ]]; then untracked=" $number_of_untracked_files◆"; fi
+		if [[ $number_of_untracked_files -gt 0 ]]; then untracked=" $number_of_untracked_files☀"; fi
+
+		local number_added=$(\grep -c "^A" <<< "${git_status}")
+		[[ $number_added -gt 0 ]] && added=" $number_added✚"
+
+		local number_modified=$(\grep -c "^.M" <<< "${git_status}")
+		if [[ $number_modified -gt 0 ]]; then
+			modified=" $number_modified●"
+			bgclr='red'
+			fgclr='white'
+		fi
+
+		local number_added_modified=$(\grep -c "^M" <<< "${git_status}")
+		local number_added_renamed=$(\grep -c "^R" <<< "${git_status}")
+		if [[ $number_modified -gt 0 && $number_added_modified -gt 0 ]]; then
+			modified="$modified$((number_added_modified+number_added_renamed))±"
+		elif [[ $number_added_modified -gt 0 ]]; then
+			modified=" ●$((number_added_modified+number_added_renamed))±"
+		fi
+
+		local number_deleted=$(\grep -c "^.D" <<< "${git_status}")
+		if [[ $number_deleted -gt 0 ]]; then
+			deleted=" $number_deleted‒"
+			bgclr='red'
+			fgclr='white'
+		fi
+
+		local number_added_deleted=$(\grep -c "^D" <<< "${git_status}")
+		if [[ $number_deleted -gt 0 && $number_added_deleted -gt 0 ]]; then
+			deleted="$deleted$number_added_deleted±"
+		elif [[ $number_added_deleted -gt 0 ]]; then
+			deleted=" ‒$number_added_deleted±"
+		fi
+
+		local tag_at_current_commit=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
+		if [[ -n $tag_at_current_commit ]]; then tagged=" ☗$tag_at_current_commit "; fi
+
+		local number_of_stashes="$(git stash list -n1 2> /dev/null | wc -l)"
+		if [[ $number_of_stashes -gt 0 ]]; then
+			stashed=" ${number_of_stashes##*(  )}⚙"
+			bgclr='magenta'
+			fgclr='white'
+		fi
+
+		[[ $number_added -gt 0 || $number_added_modified -gt 0 || $number_added_deleted -gt 0 ]] && ready_commit=' ⚑'
+
+		local upstream_prompt=''
+		if [[ $has_upstream == true ]]; then
+			commits_diff="$(git log --pretty=oneline --topo-order --left-right ${current_commit_hash}...${upstream} 2> /dev/null)"
+			commits_ahead=$(\grep -c "^<" <<< "$commits_diff")
+			commits_behind=$(\grep -c "^>" <<< "$commits_diff")
+			upstream_prompt="$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)"
+			upstream_prompt=$(sed -e 's/\/.*$/ ☊ /g' <<< "$upstream_prompt")
+		fi
+
+		local has_diverged=false
+		[[ $commits_ahead -gt 0 && $commits_behind -gt 0 ]] && has_diverged=true
+		
+		if [[ $has_diverged == false && $commits_ahead -gt 0 ]]; then
+			if [[ $bgclr == 'red' || $bgclr == 'magenta' ]] then
+				to_push=" $fg_bold[white]↑$commits_ahead$fg_bold[$fgclr]"
+			else
+				to_push=" $fg_bold[black]↑$commits_ahead$fg_bold[$fgclr]"
+			fi
+		fi
+		[[ $has_diverged == false && $commits_behind -gt 0 ]] && to_pull=" $fg_bold[magenta]↓$commits_behind$fg_bold[$fgclr]"
+
+		### mode
+
+		prompt_segment $bgclr $fgclr
+		
+		# ➦        head
+		#  origin ☊ master <B> ·↑12 ·↓2
+		#  origin ☊ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀  ●1±
+		#  origin ☊ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1±  ‒1±
+		#  origin ☊ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
+		
+		
+		# |> +1
+		
+		# ➦ head
+		#  master ·↑12 ● ✚ <B>
+		
+		# |> origin/master ·↓2
+		
+		print -n "%{$fg_bold[$fgclr]%}"
+		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR $upstream_prompt}${mode}$to_push$to_pull"
+		print -n "$clean$tagged$stashed$untracked$modified$deleted$added$ready_commit"
+		print -n "%{$fg_no_bold[$fgclr]%}"
+	fi
+}
+
+
+
+
+prompt_git() { # Git: branch/detached head, dirty status
+	(( $+commands[git] )) || return
+	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+		local dirty=$(agnor_parse_git_dirty)
+		
+		# if [[ $SHOW_STASH_SEGMENT -eq 1 ]]; then
+			local stash_size=$(git stash list | wc -l | tr -d ' ')
+			if [[ stash_size -ne 0 ]]; then
+				prompt_segment white black
+				echo -n "+${stash_size}"
+			fi
+		# fi
+		
+		local ref_symbol ref=$(git symbolic-ref HEAD 2> /dev/null)
+		if [[ -z $ref ]]; then
+			ref=$(git rev-parse --short HEAD 2> /dev/null) || return 0
+			# ref=$(git show-ref --head -s --abbrev |head -n1 2> /dev/null) || return 0
+			ref_symbol="➦"
+		else
+			ref="${ref/refs\/heads\//}"
+			ref_symbol=$'\uE0A0' #  # VCS_BRANCH_ICON
+		fi
+		
+		local mode repo_path=$(git rev-parse --git-dir 2>/dev/null)
+		if [[ -e "${repo_path}/BISECT_LOG" ]]; then
+			mode=" <B>"
+		elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
+			mode=" >M<"
+		elif [[ -e "${repo_path}/rebase" || -e "${repo_path}/rebase-apply" || -e "${repo_path}/rebase-merge" || -e "${repo_path}/../.dotest" ]]; then
+			mode=" >R>"
+		fi
+		
+		local remote="${$(git rev-parse --verify ${hook_com[branch]}@{upstream} --symbolic-full-name 2>/dev/null)/refs\/remotes\/}"
+		local ahead behind
+		if [[ -n ${remote} ]] ; then
+			ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l | tr -d ' ')
+			behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l | tr -d ' ')
+		fi
+
+		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
+			prompt_segment red black
+		elif [[ -n $dirty ]]; then
+			prompt_segment yellow black
+		else
+			prompt_segment green black
+		fi
+		
+		(){ # vcs_info
+			setopt PROMPT_SUBST
+			autoload -Uz vcs_info
+			zstyle ':vcs_info:*' enable git
+			zstyle ':vcs_info:*' get-revision true
+			zstyle ':vcs_info:*' check-for-changes true
+			zstyle ':vcs_info:*' stagedstr $'\u271A' # ✚ # VCS_UNSTAGED_ICON
+			zstyle ':vcs_info:*' unstagedstr $'\u25CF' # ● # VCS_STAGED_ICON
+			zstyle ':vcs_info:*' formats ' %u%c'
+			zstyle ':vcs_info:*' actionformats ' %u%c'
+			vcs_info
+		}
+		
+		echo -n "${ref_symbol} ${ref}"
+		[[ $ahead -ne "0" ]] && echo -n " ·\u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
+		echo -n "${vcs_info_msg_0_%% }${mode}"
+		
+		if [[ -n $remote ]]; then # Displaying upstream dedicated segment
+			if [[ $behind -ne 0 ]]; then
+				prompt_segment magenta white
+			else
+				prompt_segment cyan black
+			fi
+			echo -n "\uE0A0 $remote" #  # VCS_BRANCH_ICON
+			[[ $behind -ne 0 ]] && echo -n " ·\u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		fi
+	fi
+}
+
+
 prompt_bzr() { # [-] Bzr
 	(( $+commands[bzr] )) || return
 	if ( bzr status >/dev/null 2>&1 ); then
@@ -541,7 +561,7 @@ prompt_hg() {  # [-] Mercurial
 }
 
 
-prompt_end_chars() { # Prompt newlie and ending characters ($ / #)
+prompt_end_chars() { # Prompt newline and ending characters ($ / #)
 	echo ''
 	[[ $UID -eq 0 ]] && echo -n ' #' || echo -n ' $'
 	echo -n " ❯"
@@ -553,7 +573,7 @@ build_prompt() {
 	prompt_retval_status_lite
 	prompt_root_status
 	prompt_context
-	prompt_dir
+	prompt_dir_lite
 	prompt_git
 	prompt_end
 }
