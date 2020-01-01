@@ -29,13 +29,15 @@ Packages:
 * figlet    - Program for making large letters out of ordinary text
 * cowsay    - Program which generates ASCII pictures of a cow with a message
 
+
+## Package required:
+-curl
+
 ## Install:
 ```shell
 sh -c "$ (curl -fsSL https://github.com/UnknownErrror/termux-oh-my-zsh/raw/master/install.sh)"
 ```
 
-## Package required:
--curl
 
 ## Set color style:
 Run `chcolor` to change the color style, or run:
