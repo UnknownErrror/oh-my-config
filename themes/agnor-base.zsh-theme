@@ -474,7 +474,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		fi
 
 		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
-			prompt_segment red black
+			prompt_segment red white
 		elif [[ -n $dirty ]]; then
 			prompt_segment yellow black
 		else
