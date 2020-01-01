@@ -272,7 +272,7 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	[[ "$DISABLE_UNTRACKED_FILES_DIRTY" == "true" ]] && FLAGS+='--untracked-files=no'
 	[[ "$GIT_STATUS_IGNORE_SUBMODULES" != "git" ]] && FLAGS+="--ignore-submodules=${GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
 	local STATUS=$(command git status ${FLAGS} 2> /dev/null | tail -n1)
-	[[ -n $STATUS ]] && return 1 || return 0
+	[[ -n $STATUS ]] && echo '*'
 }
 prompt_git_def() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
