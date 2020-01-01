@@ -481,7 +481,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 			prompt_segment green black
 		fi
 		
-		(){ # vcs_info
+		#(){ # vcs_info
 			setopt PROMPT_SUBST
 			autoload -Uz vcs_info
 			zstyle ':vcs_info:*' enable git
@@ -492,7 +492,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 			zstyle ':vcs_info:*' formats ' %u%c'
 			zstyle ':vcs_info:*' actionformats ' %u%c'
 			vcs_info
-		}
+		#}
 		
 		echo -n "${ref_symbol} ${ref}"
 		[[ $ahead -ne "0" ]] && echo -n " ·\u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
