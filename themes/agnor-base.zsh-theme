@@ -375,7 +375,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		echo -n "${ref_symbol} ${ref}"
 		[[ $ahead -ne "0" ]] && echo -n " ·\u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		[[ $SHOW_SEGMENT_REMOTE == false && $behind -ne 0 ]] && echo -n " ·\u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		[[ ${SHOW_SEGMENT_REMOTE} == false && $behind -ne 0 ]] && echo -n " ·\u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		echo -n "${mode}"
 		
 		local tag=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
@@ -383,7 +383,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		prompt_segment yellow black "${vcs_info_msg_0_%% }"
 		
-		if [[ $SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
+		if [[ ${SHOW_SEGMENT_REMOTE} != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
 				prompt_segment magenta white
 			else
