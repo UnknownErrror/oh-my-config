@@ -185,10 +185,6 @@ prompt_retval_status() { # Return Value: (✘ <codes> / ✘ <code> / ✘ SIG<sig
 		code_sum=$(( $code_sum + $code ))
 	done
 	
-	    0|127 ->   0|127
-	  0|0|127 -> 0|0|127
-	0|0|0|127 -> ..0|127
-	
 	local pre_result=$(echo $result | sed -r 's/^0\|0\|(0\|)+/..0|/')
 	if [[ pre_result == result ]]; then
 		pre_result=$(echo $result | sed -r 's/(\|0)+\|0\|0$/|0../')
