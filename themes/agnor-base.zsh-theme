@@ -213,35 +213,18 @@ prompt_git_def() { # Git: branch/detached head, dirty status
 
 
 
-# Git statuses:
-# - Dirty working directory (orange (dirty) / green)
-# - Branch () or detached head (➦)
-# - Current branch / SHA1 in detached head state
-# - Remote branch name (if you're tracking a remote branch)
-# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
-# - Stashes count
 
 prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂▸◄►◆☀★☗☊✔✖❮❯⚑⚙
-	local modified untracked added deleted tagged stashed
-	local ready_commit git_status bgclr fgclr
+	local modified untracked added deleted stashed
 
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-		local clean
-		if [[ -n $dirty ]]; then
-			clean=''
-			bgclr='yellow'
-			fgclr='white'
-		else
-			clean=" $(print_icon OK_ICON)" # ✔
-			bgclr='green'
-			fgclr='white'
-		fi
-
+		local git_status=$(git status --porcelain 2> /dev/null)
+		
 		local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
 
 		local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}")
-		# if [[ $number_of_untracked_files -gt 0 ]]; then untracked=" $number_of_untracked_files◆"; fi
-		if [[ $number_of_untracked_files -gt 0 ]]; then untracked=" $number_of_untracked_files☀"; fi
+		# [[ $number_of_untracked_files -gt 0 ]] && untracked=" $number_of_untracked_files◆"
+		[[ $number_of_untracked_files -gt 0 ]] && untracked=" $number_of_untracked_files☀"
 
 		local number_added=$(\grep -c "^A" <<< "${git_status}")
 		[[ $number_added -gt 0 ]] && added=" $number_added✚"
@@ -263,67 +246,52 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		if [[ $number_deleted -gt 0 ]]; then
 			deleted=" $number_deleted‒"
 		fi
-
 		local number_added_deleted=$(\grep -c "^D" <<< "${git_status}")
 		if [[ $number_deleted -gt 0 && $number_added_deleted -gt 0 ]]; then
 			deleted="$deleted$number_added_deleted±"
 		elif [[ $number_added_deleted -gt 0 ]]; then
 			deleted=" ‒$number_added_deleted±"
 		fi
-
-		local tag_at_current_commit=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
-		[[ -n $tag_at_current_commit ]] && tagged=" ☗$tag_at_current_commit ";
-
-		local number_of_stashes="$(git stash list -n1 2> /dev/null | wc -l)"
-		[[ $number_of_stashes -gt 0 ]] && stashed=" ${number_of_stashes##*(  )}$(print_icon ETC_ICON)" # ⚙
-
-		[[ $number_added -gt 0 || $number_added_modified -gt 0 || $number_added_deleted -gt 0 ]] && ready_commit=' ⚑'
 		
-		
-		local upstream=$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)
-		local commits_ahead commits_behind
-		if [[ -n "${upstream}" && "${upstream}" != "@{upstream}" ]]; then
-			local commits_diff="$(git log --pretty=oneline --topo-order --left-right ${current_commit_hash}...${upstream} 2> /dev/null)"
-			commits_ahead=$(\grep -c "^<" <<< "$commits_diff")
-			commits_behind=$(\grep -c "^>" <<< "$commits_diff")
-		fi
-		
-		prompt_segment $bgclr $fgclr
-		
-		# ➦        head
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀  ●1±
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1±  ‒1±
 		
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
-		#           master              ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
+		#           master                           12☀ 3●1± 3‒1± 12✚ ⚑
 		
 		
 		# |> +2
-		# ➦ head
 		#  master ·↑12 ● ✚ <B>             ||> origin ·↓2
-		#  master ·↑12 <B>    ||> ● ✚      ||> origin ·↓2
 		
-		print -n "%{$fg_bold[$fgclr]%}"
-		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR}$clean$tagged$stashed$untracked$modified$deleted$added$ready_commit"
-		print -n "%{$fg_no_bold[$fgclr]%}"
+		#  master ☗ tag ↑12 ✔ <B>    ||> ● ✚      ||> origin ·↓2
+		
+		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR}$untracked$modified$deleted$added"
 	fi
 }
 
 
+# Git statuses:
+# - Branch () or detached head (➦)
+# - Dirty working directory state (orange (dirty) / green (✔))
+# - Current branch / SHA1 in detached head state
+# - Remote branch name (if you're tracking a remote branch)
+# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
+# - Stashes count
 
-(( $+parameters[SHOW_SEGMENT_REMOTE] )) || SHOW_SEGMENT_REMOTE=true # default value
+(( $+parameters[SHOW_GIT_SEGMENT_REMOTE] )) || SHOW_GIT_SEGMENT_REMOTE=true # default value
+(( $+parameters[SHOW_GIT_SEGMENT_STASH] ))  || SHOW_GIT_SEGMENT_STASH=true # default value
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
 		local dirty=$(agnor_parse_git_dirty)
 		
-		# if [[ $SHOW_STASH_SEGMENT -eq 1 ]]; then
-			local stash_size=$(git stash list | wc -l | tr -d ' ')
-			if [[ stash_size -ne 0 ]]; then
-				prompt_segment white black
-				echo -n "+${stash_size}"
+		if [[ $SHOW_GIT_SEGMENT_STASH != false ]]; then
+			# local stashes=$(git stash list | wc -l)
+			local stashes=$(git stash list -n 1 | wc -l | tr -d ' ')
+			if [[ stashes -ne 0 ]]; then
+				prompt_segment white black "+${stashes##*(  )}$(print_icon ETC_ICON)" # ⚙
 			fi
-		# fi
+		fi
 		
 		local ref_symbol ref=$(git symbolic-ref HEAD 2> /dev/null)
 		if [[ -z $ref ]]; then
@@ -351,9 +319,11 @@ prompt_git() { # Git: branch/detached head, dirty status
 			ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l | tr -d ' ')
 			behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l | tr -d ' ')
 		fi
-
+		
 		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
 			prompt_segment red white # diverged state
+		elif [[ ${SHOW_GIT_SEGMENT_REMOTE} == false && $behind -ne 0 ]]; then
+			prompt_segment magenta white # merge/rebase is needed
 		elif [[ -n $dirty ]]; then
 			prompt_segment yellow black
 		else
@@ -374,25 +344,30 @@ prompt_git() { # Git: branch/detached head, dirty status
 		}
 		
 		echo -n "${ref_symbol} ${ref}"
-		[[ $ahead -ne "0" ]] && echo -n " ·\u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		[[ ${SHOW_SEGMENT_REMOTE} == false && $behind -ne 0 ]] && echo -n " ·\u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
-		echo -n "${mode}"
 		
-		local tag=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
-		[[ -n $tag ]] && echo -n " ☗ $tag "
+		local tag=$(git describe --exact-match --tags "$(git rev-parse HEAD 2> /dev/null)" 2> /dev/null)
+		[[ -n $tag ]] && echo -n " ☗ $tag"
+		
+		[[ $ahead -ne "0" ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
+		[[ ${SHOW_GIT_SEGMENT_REMOTE} == false && $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		
+		[[ ! -n $dirty ]] && echo " $(print_icon OK_ICON)" # ✔
+		
+		echo -n "${mode}"
 		
 		prompt_segment yellow black "${vcs_info_msg_0_%% }"
 		
-		if [[ ${SHOW_SEGMENT_REMOTE} != false && -n ${remote} ]]; then
+		if [[ ${SHOW_GIT_SEGMENT_REMOTE} != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
-				prompt_segment magenta white
+				prompt_segment magenta white # merge/rebase is needed
 			else
 				prompt_segment cyan black
 			fi
 			echo -n "\uE0A0 $remote" #  # VCS_BRANCH_ICON
-			[[ $behind -ne 0 ]] && echo -n " ·\u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		fi
 	fi
+	# ···
 }
 
 
