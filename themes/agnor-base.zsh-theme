@@ -355,7 +355,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		[[ $ahead -ne "0" ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
 		[[ ${SHOW_GIT_SEGMENT_REMOTE} == false && $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		
-		[[ ! -n $dirty ]] && echo " $(print_icon OK_ICON)" # ✔
+		[[ ! -n $dirty ]] && echo -n " $(print_icon OK_ICON)" # ✔
 		
 		echo -n "${mode}"
 		
