@@ -185,7 +185,15 @@ prompt_retval_status() { # Return Value: (✘ <codes> / ✘ <code> / ✘ SIG<sig
 		code_sum=$(( $code_sum + $code ))
 	done
 	
-	result=$(echo $result | sed -r 's/^(0\|)+/..0|/' | sed -r 's/(\|0)+/|0../')
+	    0|127 ->   0|127
+	  0|0|127 -> 0|0|127
+	0|0|0|127 -> ..0|127
+	
+	local pre_result=$(echo $result | sed -r 's/^0\|0\|(0\|)+/..0|/')
+	if [[ pre_result == result ]]; then
+		pre_result=$(echo $result | sed -r 's/(\|0)+\|0\|0$/|0../')
+	fi
+	result=${pre_result}
 
 	if (( code_sum > 0 )); then
 		prompt_segment red white "$(print_icon FAIL_ICON) $result"
@@ -202,8 +210,13 @@ prompt_retval_status_lite() { # Return Value (Lite): (✘ <code> / ✘ SIG<sig>(
 }
 
 prompt_root_status() { # Status of root: (⚡)
-	if [[ $UID -eq 0 ]]; then
+	# if [[ $UID -eq 0 ]]; then
+		# prompt_segment black yellow "$(print_icon ROOT_ICON)"
+	# fi
+	if [[ $(print -P "%#") == '#' ]]; then
 		prompt_segment black yellow "$(print_icon ROOT_ICON)"
+	elif [[ -n "$SUDO_COMMAND" ]]; then
+		prompt_segment black yellow "$(print_icon SUDO_ICON)"
 	fi
 }
 prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
@@ -223,11 +236,24 @@ prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
 }
 
 prompt_context() { # Context: ((ssh) <user>@<hostname> / <user>@<hostname>)
-	if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]] || [[ -n "$SSH_TTY" ]]; then
-		prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
-	elif [[ "$USER" != "$DEFAULT_USER" ]]; then
+	if [[ $(print -P "%#") == '#' ]]; then
+		prompt_segment black yellow "$USER@%m"
+	elif [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
+		if [[ -n "$SUDO_COMMAND" ]]; then
+			prompt_segment black yellow "(ssh) $USER@%m" # "$(print_icon SSH_ICON)"
+		else
+			prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
+		fi
+	elif [[ -n "$SUDO_COMMAND" ]]; then
 		prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
 	fi
+	
+	
+	# if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]] || [[ -n "$SSH_TTY" ]]; then
+		# prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
+	# elif [[ "$USER" != "$DEFAULT_USER" ]]; then
+		# prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
+	# fi
 }
 
 
@@ -315,12 +341,11 @@ prompt_git_def() { # Git: branch/detached head, dirty status
 
 
 prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂▸◄►◆☀★☗☊✔✖❮❯⚑⚙
-	local mode clean
 	local modified untracked added deleted tagged stashed
 	local ready_commit git_status bgclr fgclr
-	local commits_diff commits_ahead commits_behind has_diverged to_push to_pull
 
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+		local clean
 		if [[ -n $dirty ]]; then
 			clean=''
 			bgclr='yellow'
@@ -330,10 +355,6 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 			bgclr='green'
 			fgclr='white'
 		fi
-
-		local upstream=$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)
-		local has_upstream=false
-		[[ -n "${upstream}" && "${upstream}" != "@{upstream}" ]] && has_upstream=true
 
 		local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
 
@@ -378,55 +399,37 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 
 		local number_of_stashes="$(git stash list -n1 2> /dev/null | wc -l)"
 		if [[ $number_of_stashes -gt 0 ]]; then
-			stashed=" ${number_of_stashes##*(  )}⚙"
+			stashed=" ${number_of_stashes##*(  )}$(print_icon ETC_ICON)" # ⚙
 			bgclr='magenta'
 			fgclr='white'
 		fi
 
 		[[ $number_added -gt 0 || $number_added_modified -gt 0 || $number_added_deleted -gt 0 ]] && ready_commit=' ⚑'
-
-		local upstream_prompt=''
-		if [[ $has_upstream == true ]]; then
-			commits_diff="$(git log --pretty=oneline --topo-order --left-right ${current_commit_hash}...${upstream} 2> /dev/null)"
+		
+		local upstream=$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)
+		local commits_ahead commits_behind
+		if [[ -n "${upstream}" && "${upstream}" != "@{upstream}" ]]; then
+			local commits_diff="$(git log --pretty=oneline --topo-order --left-right ${current_commit_hash}...${upstream} 2> /dev/null)"
 			commits_ahead=$(\grep -c "^<" <<< "$commits_diff")
 			commits_behind=$(\grep -c "^>" <<< "$commits_diff")
-			upstream_prompt="$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)"
-			upstream_prompt=$(sed -e 's/\/.*$/ ☊ /g' <<< "$upstream_prompt")
 		fi
-
-		local has_diverged=false
-		[[ $commits_ahead -gt 0 && $commits_behind -gt 0 ]] && has_diverged=true
 		
-		if [[ $has_diverged == false && $commits_ahead -gt 0 ]]; then
-			if [[ $bgclr == 'red' || $bgclr == 'magenta' ]] then
-				to_push=" $fg_bold[white]↑$commits_ahead$fg_bold[$fgclr]"
-			else
-				to_push=" $fg_bold[black]↑$commits_ahead$fg_bold[$fgclr]"
-			fi
-		fi
-		[[ $has_diverged == false && $commits_behind -gt 0 ]] && to_pull=" $fg_bold[magenta]↓$commits_behind$fg_bold[$fgclr]"
-
-		### mode
-
 		prompt_segment $bgclr $fgclr
 		
 		# ➦        head
-		#  origin ☊ master <B> ·↑12 ·↓2
-		#  origin ☊ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀  ●1±
-		#  origin ☊ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1±  ‒1±
-		#  origin ☊ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
+		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀  ●1±
+		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1±  ‒1±
+		
+		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
+		#           master              ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
 		
 		
 		# |> +1
-		
 		# ➦ head
-		#  master ·↑12 ● ✚ <B>
-		
-		# |> origin/master ·↓2
+		#  master ·↑12 ● ✚ <B>      ||> origin ·↓2
 		
 		print -n "%{$fg_bold[$fgclr]%}"
-		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR $upstream_prompt}${mode}$to_push$to_pull"
-		print -n "$clean$tagged$stashed$untracked$modified$deleted$added$ready_commit"
+		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR}$clean$tagged$stashed$untracked$modified$deleted$added$ready_commit"
 		print -n "%{$fg_no_bold[$fgclr]%}"
 	fi
 }
@@ -468,20 +471,21 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		local remote="${$(git rev-parse --verify ${hook_com[branch]}@{upstream} --symbolic-full-name 2>/dev/null)/refs\/remotes\/}"
 		local ahead behind
-		if [[ -n ${remote} ]] ; then
+		if [[ -n ${remote} ]]; then
+			remote="${remote/\/$ref/}"
 			ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l | tr -d ' ')
 			behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l | tr -d ' ')
 		fi
 
 		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
-			prompt_segment red white
+			prompt_segment red white # diverged state
 		elif [[ -n $dirty ]]; then
 			prompt_segment yellow black
 		else
 			prompt_segment green black
 		fi
 		
-		#(){ # vcs_info
+		(){ # vcs_info
 			setopt PROMPT_SUBST
 			autoload -Uz vcs_info
 			zstyle ':vcs_info:*' enable git
@@ -492,13 +496,13 @@ prompt_git() { # Git: branch/detached head, dirty status
 			zstyle ':vcs_info:*' formats ' %u%c'
 			zstyle ':vcs_info:*' actionformats ' %u%c'
 			vcs_info
-		#}
+		}
 		
 		echo -n "${ref_symbol} ${ref}"
 		[[ $ahead -ne "0" ]] && echo -n " ·\u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
 		echo -n "${vcs_info_msg_0_%% }${mode}"
 		
-		if [[ -n $remote ]]; then # Displaying upstream dedicated segment
+		if [[ -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
 				prompt_segment magenta white
 			else
