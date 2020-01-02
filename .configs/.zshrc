@@ -1,4 +1,4 @@
-[[ -d "/data/data/com.termux" ]] && export TMUX_PATH="/data/data/com.termux"
+[[ -d "/data/data/com.termux" ]] && export TMUX_PATH="/data/data/com.termux" || export TMUX_PATH=''
 
 export USER="$(id -un)"
 [[ -n $TMUX_PATH ]] && export DEFAULT_USER="u0_a78" || export DEFAULT_USER="unkerr"
