@@ -31,65 +31,10 @@ git_details() {
 		prompt_segment magenta white
 		echo -n "~ ${changed}"
 	fi
-	stashed=`git stash list | wc -l`
-	if [[ $stashed -ne "0" ]]; then
-		prompt_segment cyan white
-		echo -n "⚑ ${stashed}"
-	fi
 	conflict=`count_lines "$staged_files" U`
 	if [[ $conflict -ne "0" ]]; then
 		prompt_segment red white
 		echo -n "✖ ${conflict}"
-	fi
-}
-
-git_branch_diff() {
-	local merge_name remote_ref
-	local branch=`git symbolic-ref HEAD | sed -e 's/refs\/heads\///g'`
-	local remote_name=`git config branch.${branch}.remote`
-	if [[ -n "$remote_name" ]]; then
-		merge_name=`git config branch.${branch}.merge`
-	else
-		remote_name='origin'
-		merge_name="refs/heads/${branch}"
-	fi
-	if [[ "$remote_name" == '.' ]]; then
-		remote_ref="$merge_name"
-	else
-		remote_ref="refs/remotes/$remote_name/${branch}"
-	fi
-	if [[ `git remote 2>/dev/null | wc -l` -ne "0" ]]; then
-		local revgit=`git rev-list --left-right ${remote_ref}...HEAD`
-		local revs=`all_lines "$revgit"`
-		local ahead=`count_lines "$revgit" "^>"`
-		local behind=$(( revs - ahead ))
-		if [[ $ahead -ne "0" ]]; then
-			echo -n "·\u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		fi
-		if [[ $behind -ne "0" ]]; then
-			echo -n "·\u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
-		fi
-	fi
-}
-
-# Git: branch/detached head, dirty status
-prompt_git0() {
-	local ref dirty
-	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-		ZSH_THEME_GIT_PROMPT_DIRTY='±'
-		local dirty=$(parse_git_dirty)
-		local ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="➦ $(git rev-parse --short HEAD 2> /dev/null)"
-		
-		if [[ -n $dirty ]]; then
-			prompt_segment yellow black
-		else
-			prompt_segment green black
-		fi
-		local BRANCH_CHAR=$'\uE0A0' #  # VCS_BRANCH_ICON
-		echo -n "${ref/refs\/heads\//$BRANCH_CHAR }"
-		
-		git_branch_diff
-		git_details
 	fi
 }
 

@@ -222,14 +222,14 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		
 		local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
 
-		local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}")
+		local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}") # new untracked files preceeded by their number
 		# [[ $number_of_untracked_files -gt 0 ]] && untracked=" $number_of_untracked_files◆"
 		[[ $number_of_untracked_files -gt 0 ]] && untracked=" $number_of_untracked_files☀"
 
-		local number_added=$(\grep -c "^A" <<< "${git_status}")
+		local number_added=$(\grep -c "^A" <<< "${git_status}") # added files from the new untracked ones preceeded by their number
 		[[ $number_added -gt 0 ]] && added=" $number_added✚"
 
-		local number_modified=$(\grep -c "^.M" <<< "${git_status}")
+		local number_modified=$(\grep -c "^.M" <<< "${git_status}") # modified files preceeded by their number
 		if [[ $number_modified -gt 0 ]]; then
 			modified=" $number_modified●"
 		fi
@@ -242,7 +242,7 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 			modified=" ●$((number_added_modified+number_added_renamed))±"
 		fi
 
-		local number_deleted=$(\grep -c "^.D" <<< "${git_status}")
+		local number_deleted=$(\grep -c "^.D" <<< "${git_status}") # deleted files preceeded by their number
 		if [[ $number_deleted -gt 0 ]]; then
 			deleted=" $number_deleted‒"
 		fi
@@ -252,6 +252,7 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		elif [[ $number_added_deleted -gt 0 ]]; then
 			deleted=" ‒$number_added_deleted±"
 		fi
+		## ±	added files from the modifies or delete ones preceeded by their number
 		
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀  ●1±
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1±  ‒1±
@@ -277,6 +278,9 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 # - Remote branch name (if you're tracking a remote branch)
 # - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
 # - Stashes count
+# - <B> - Bisect state on the current branch
+# - >M< - Merge state on the current branch
+# - >R> - Rebase state on the current branch
 
 (( $+parameters[SHOW_GIT_SEGMENT_REMOTE] )) || SHOW_GIT_SEGMENT_REMOTE=true # default value
 (( $+parameters[SHOW_GIT_SEGMENT_STASH] ))  || SHOW_GIT_SEGMENT_STASH=true # default value

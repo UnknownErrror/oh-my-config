@@ -3,7 +3,7 @@
 # Install main
 pkg install -y root-repo
 # root-repo - Termux repository for root
-apt update && apt upgrade -y
+apt update && apt full-upgrade -y && apt autoremove -y
 termux-setup-storage
 apt install -y tsu curl wget git micro ncurses-utils man
 # curl wget git man
