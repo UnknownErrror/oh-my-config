@@ -1,110 +1,5 @@
 source $ZSH/themes/agnor-icons.zsh
 
-
-typeset -grA __p9k_colors=(
-            black 000               red 001             green 002            yellow 003
-             blue 004           magenta 005              cyan 006             white 007
-             grey 008            maroon 009              lime 010             olive 011
-             navy 012           fuchsia 013              aqua 014              teal 014
-           silver 015             grey0 016          navyblue 017          darkblue 018
-            blue3 020             blue1 021         darkgreen 022      deepskyblue4 025
-      dodgerblue3 026       dodgerblue2 027            green4 028      springgreen4 029
-       turquoise4 030      deepskyblue3 032       dodgerblue1 033          darkcyan 036
-    lightseagreen 037      deepskyblue2 038      deepskyblue1 039            green3 040
-     springgreen3 041             cyan3 043     darkturquoise 044        turquoise2 045
-           green1 046      springgreen2 047      springgreen1 048 mediumspringgreen 049
-            cyan2 050             cyan1 051           purple4 055           purple3 056
-       blueviolet 057            grey37 059     mediumpurple4 060        slateblue3 062
-       royalblue1 063       chartreuse4 064    paleturquoise4 066         steelblue 067
-       steelblue3 068    cornflowerblue 069     darkseagreen4 071         cadetblue 073
-         skyblue3 074       chartreuse3 076         seagreen3 078       aquamarine3 079
-  mediumturquoise 080        steelblue1 081         seagreen2 083         seagreen1 085
-   darkslategray2 087           darkred 088       darkmagenta 091           orange4 094
-       lightpink4 095             plum4 096     mediumpurple3 098        slateblue1 099
-           wheat4 101            grey53 102    lightslategrey 103      mediumpurple 104
-   lightslateblue 105           yellow4 106      darkseagreen 108     lightskyblue3 110
-         skyblue2 111       chartreuse2 112        palegreen3 114    darkslategray3 116
-         skyblue1 117       chartreuse1 118        lightgreen 120       aquamarine1 122
-   darkslategray1 123         deeppink4 125   mediumvioletred 126        darkviolet 128
-           purple 129     mediumorchid3 133      mediumorchid 134     darkgoldenrod 136
-        rosybrown 138            grey63 139     mediumpurple2 140     mediumpurple1 141
-        darkkhaki 143      navajowhite3 144            grey69 145   lightsteelblue3 146
-   lightsteelblue 147   darkolivegreen3 149     darkseagreen3 150        lightcyan3 152
-    lightskyblue1 153       greenyellow 154   darkolivegreen2 155        palegreen1 156
-    darkseagreen2 157    paleturquoise1 159              red3 160         deeppink3 162
-         magenta3 164       darkorange3 166         indianred 167          hotpink3 168
-         hotpink2 169            orchid 170           orange3 172      lightsalmon3 173
-       lightpink3 174             pink3 175             plum3 176            violet 177
-            gold3 178   lightgoldenrod3 179               tan 180        mistyrose3 181
-         thistle3 182             plum2 183           yellow3 184            khaki3 185
-     lightyellow3 187            grey84 188   lightsteelblue1 189           yellow2 190
-  darkolivegreen1 192     darkseagreen1 193         honeydew2 194        lightcyan1 195
-             red1 196         deeppink2 197         deeppink1 199          magenta2 200
-         magenta1 201        orangered1 202        indianred1 204           hotpink 206
-    mediumorchid1 207        darkorange 208           salmon1 209        lightcoral 210
-   palevioletred1 211           orchid2 212           orchid1 213           orange1 214
-       sandybrown 215      lightsalmon1 216        lightpink1 217             pink1 218
-            plum1 219             gold1 220   lightgoldenrod2 222      navajowhite1 223
-       mistyrose1 224          thistle1 225           yellow1 226   lightgoldenrod1 227
-           khaki1 228            wheat1 229         cornsilk1 230           grey100 231
-            grey3 232             grey7 233            grey11 234            grey15 235
-           grey19 236            grey23 237            grey27 238            grey30 239
-           grey35 240            grey39 241            grey42 242            grey46 243
-           grey50 244            grey54 245            grey58 246            grey62 247
-           grey66 248            grey70 249            grey74 250            grey78 251
-           grey82 252            grey85 253            grey89 254            grey93 255)
-function getColorCode() {
-  emulate -L zsh
-  setopt no_hist_expand extended_glob no_prompt_bang prompt_{percent,subst} no_aliases
-  if (( ARGC == 1 )); then
-    case $1 in
-      foreground)
-        local k
-        for k in "${(k@)__p9k_colors}"; do
-          local v=${__p9k_colors[$k]}
-          print -rP -- "%F{$v}$v - $k%f"
-        done
-        return 0
-        ;;
-      background)
-        local k
-        for k in "${(k@)__p9k_colors}"; do
-          local v=${__p9k_colors[$k]}
-          print -rP -- "%K{$v}$v - $k%k"
-        done
-        return 0
-        ;;
-    esac
-  fi
-  echo "Usage: getColorCode background|foreground" >&2
-  return 1
-}
-_p9k_translate_color() {
-  if [[ $1 == <-> ]]; then                  # decimal color code: 255
-    _p9k_ret=${(l.3..0.)1}
-  elif [[ $1 == '#'[[:xdigit:]]## ]]; then  # hexademical color code: #ffffff
-    _p9k_ret=${(L)1}
-  else                                      # named color: red
-    # Strip prifixes if there are any.
-    _p9k_ret=$__p9k_colors[${${${1#bg-}#fg-}#br}]
-  fi
-}
-
-
-# _p9k_color prompt_foo_BAR BACKGROUND red
-_p9k_color() {
-  local key="_p9k_color ${(pj:\0:)*}"
-  _p9k_ret=$_p9k_cache[$key]
-  if [[ -n $_p9k_ret ]]; then
-    _p9k_ret[-1,-1]=''
-  else
-    _p9k_param "$@"
-    _p9k_translate_color $_p9k_ret
-    _p9k_cache[$key]=${_p9k_ret}.
-  fi
-}
-
-
 ### Segment drawing # A few utility functions to make it easy and re-usable to draw segmented prompts
 
 CURRENT_BG='NONE'
@@ -205,11 +100,8 @@ prompt_retval_status_lite() { # Return Value (Lite): (✘ <code> / ✘ SIG<sig>(
 	fi
 }
 
-prompt_root_status() { # Status of root: (⚡)
-	# if [[ $UID -eq 0 ]]; then
-		# prompt_segment black yellow "$(print_icon ROOT_ICON)"
-	# fi
-	if [[ $(print -P "%#") == '#' ]]; then
+prompt_root_status() { # Status of root: (⚡ / )
+	if [[ ${(%):-%#} == '#' ]]; then
 		prompt_segment black yellow "$(print_icon ROOT_ICON)"
 	elif [[ -n "$SUDO_COMMAND" ]]; then
 		prompt_segment black yellow "$(print_icon SUDO_ICON)"
@@ -232,24 +124,11 @@ prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
 }
 
 prompt_context() { # Context: ((ssh) <user>@<hostname> / <user>@<hostname>)
-	if [[ $(print -P "%#") == '#' ]]; then
-		prompt_segment black yellow "$USER@%m"
-	elif [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
-		if [[ -n "$SUDO_COMMAND" ]]; then
-			prompt_segment black yellow "(ssh) $USER@%m" # "$(print_icon SSH_ICON)"
-		else
-			prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
-		fi
-	elif [[ -n "$SUDO_COMMAND" ]]; then
+	if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]] || [[ -n "$SSH_TTY" ]]; then
+		prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
+	elif [[ "$USER" != "$DEFAULT_USER" ]]; then
 		prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
 	fi
-	
-	
-	# if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]] || [[ -n "$SSH_TTY" ]]; then
-		# prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
-	# elif [[ "$USER" != "$DEFAULT_USER" ]]; then
-		# prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
-	# fi
 }
 
 

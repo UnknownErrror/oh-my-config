@@ -1,13 +1,14 @@
+[[ -d "/data/data/com.termux" ]] && export TMUX_PATH="/data/data/com.termux"
+
 export USER="$(id -un)"
-export DEFAULT_USER="u0_a78"
+[[ -n $TMUX_PATH ]] && export DEFAULT_USER="u0_a78" || export DEFAULT_USER="unkerr"
 
 export TERM="xterm-256color"
 
 export EDITOR=micro
 export ZSH="$HOME/.oh-my-config" # [REQ]
 export SD="/sdcard"
-export TMUX_PATH="/data/data/com.termux"
-export HOME='/home/unkerr'
+# [[ -n $TMUX_PATH ]] && export HOME='/home/unkerr'
 
 
 CASE_SENSITIVE=false # Use case-sensitive completion
@@ -151,7 +152,7 @@ setopt BEEP
 # [INIT]
 
 # chcur 1
-# chpath bb
+[[ -n $TMUX_PATH ]] && chpath bb
 
 # run-help command
 unalias run-help
