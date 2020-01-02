@@ -7,6 +7,7 @@ export EDITOR=micro
 export ZSH="$HOME/.oh-my-config" # [REQ]
 export SD="/sdcard"
 export TMUX_PATH="/data/data/com.termux"
+export HOME='/home/unkerr'
 
 
 CASE_SENSITIVE=false # Use case-sensitive completion
@@ -37,7 +38,6 @@ plugins=(
 	jump
 	gitfast
 	themes
-	timer
 )
 source $ZSH/zsh-init.zsh # [REQ]
 
@@ -151,7 +151,7 @@ setopt BEEP
 # [INIT]
 
 # chcur 1
-chpath bb
+# chpath bb
 
 # run-help command
 unalias run-help
