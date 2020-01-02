@@ -167,7 +167,7 @@ prompt_date() { # System date
 	prompt_segment black default "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
 
-
+# Configurable: DISABLE_UNTRACKED_FILES_DIRTY, GIT_STATUS_IGNORE_SUBMODULES
 function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	local -a FLAGS=('--porcelain')
 	[[ "$DISABLE_UNTRACKED_FILES_DIRTY" == "true" ]] && FLAGS+='--untracked-files=no'
@@ -213,7 +213,13 @@ prompt_git_def() { # Git: branch/detached head, dirty status
 
 
 
-
+# Git statuses:
+# - Dirty working directory (orange (dirty) / green)
+# - Branch () or detached head (➦)
+# - Current branch / SHA1 in detached head state
+# - Remote branch name (if you're tracking a remote branch)
+# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
+# - Stashes count
 
 prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂▸◄►◆☀★☗☊✔✖❮❯⚑⚙
 	local modified untracked added deleted tagged stashed
@@ -243,8 +249,6 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		local number_modified=$(\grep -c "^.M" <<< "${git_status}")
 		if [[ $number_modified -gt 0 ]]; then
 			modified=" $number_modified●"
-			bgclr='red'
-			fgclr='white'
 		fi
 
 		local number_added_modified=$(\grep -c "^M" <<< "${git_status}")
@@ -258,8 +262,6 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		local number_deleted=$(\grep -c "^.D" <<< "${git_status}")
 		if [[ $number_deleted -gt 0 ]]; then
 			deleted=" $number_deleted‒"
-			bgclr='red'
-			fgclr='white'
 		fi
 
 		local number_added_deleted=$(\grep -c "^D" <<< "${git_status}")
@@ -270,16 +272,13 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		fi
 
 		local tag_at_current_commit=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
-		if [[ -n $tag_at_current_commit ]]; then tagged=" ☗$tag_at_current_commit "; fi
+		[[ -n $tag_at_current_commit ]] && tagged=" ☗$tag_at_current_commit ";
 
 		local number_of_stashes="$(git stash list -n1 2> /dev/null | wc -l)"
-		if [[ $number_of_stashes -gt 0 ]]; then
-			stashed=" ${number_of_stashes##*(  )}$(print_icon ETC_ICON)" # ⚙
-			bgclr='magenta'
-			fgclr='white'
-		fi
+		[[ $number_of_stashes -gt 0 ]] && stashed=" ${number_of_stashes##*(  )}$(print_icon ETC_ICON)" # ⚙
 
 		[[ $number_added -gt 0 || $number_added_modified -gt 0 || $number_added_deleted -gt 0 ]] && ready_commit=' ⚑'
+		
 		
 		local upstream=$(git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2> /dev/null)
 		local commits_ahead commits_behind
@@ -299,9 +298,10 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		#           master              ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
 		
 		
-		# |> +1
+		# |> +2
 		# ➦ head
-		#  master ·↑12 ● ✚ <B>      ||> origin ·↓2
+		#  master ·↑12 ● ✚ <B>             ||> origin ·↓2
+		#  master ·↑12 <B>    ||> ● ✚      ||> origin ·↓2
 		
 		print -n "%{$fg_bold[$fgclr]%}"
 		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR}$clean$tagged$stashed$untracked$modified$deleted$added$ready_commit"
@@ -311,7 +311,7 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 
 
 
-
+(( $+parameters[SHOW_SEGMENT_REMOTE] )) || SHOW_SEGMENT_REMOTE=true # default value
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
@@ -375,9 +375,15 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		echo -n "${ref_symbol} ${ref}"
 		[[ $ahead -ne "0" ]] && echo -n " ·\u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		echo -n "${vcs_info_msg_0_%% }${mode}"
+		[[ $SHOW_SEGMENT_REMOTE == false && $behind -ne 0 ]] && echo -n " ·\u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		echo -n "${mode}"
 		
-		if [[ -n ${remote} ]]; then
+		local tag=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
+		[[ -n $tag ]] && echo -n " ☗ $tag "
+		
+		prompt_segment yellow black "${vcs_info_msg_0_%% }"
+		
+		if [[ $SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
 				prompt_segment magenta white
 			else
