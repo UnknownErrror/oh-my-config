@@ -291,7 +291,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		if [[ $SHOW_GIT_SEGMENT_STASH != false ]]; then
 			# local stashes=$(git stash list | wc -l)
-			local stashes=$(git stash list -n 1 | wc -l | tr -d ' ')
+			local stashes=$(git stash list -n 1 | wc -l)
 			if [[ stashes -ne 0 ]]; then
 				prompt_segment white black "+${stashes##*(  )}$(print_icon ETC_ICON)" # ⚙
 			fi
@@ -320,8 +320,8 @@ prompt_git() { # Git: branch/detached head, dirty status
 		local ahead behind
 		if [[ -n ${remote} ]]; then
 			remote="${remote/\/$ref/}"
-			ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l | tr -d ' ')
-			behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l | tr -d ' ')
+			ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l)
+			behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l)
 		fi
 		
 		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
