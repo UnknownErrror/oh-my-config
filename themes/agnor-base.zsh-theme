@@ -283,7 +283,7 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 
 (( $+parameters[SHOW_GIT_SEGMENT_REMOTE] )) || SHOW_GIT_SEGMENT_REMOTE=true # default value
 (( $+parameters[SHOW_GIT_SEGMENT_STASH] ))  || SHOW_GIT_SEGMENT_STASH=true # default value
-prompt_git0() { # Git: branch/detached head, dirty status
+prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
