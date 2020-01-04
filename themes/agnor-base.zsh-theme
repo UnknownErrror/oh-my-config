@@ -374,6 +374,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		fi
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
+		# if [[ $(git rev-parse --is-shallow-repository) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
 			prompt_segment cyan black "BARE REPO"
 		else
@@ -471,49 +472,40 @@ __git_eread() {
 # reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
 __git_sequencer_status() {
 	local todo
-	if test -f "${repo_path}/CHERRY_PICK_HEAD"; then
-		r="|CHERRY-PICKING"
-		return 0;
-	elif test -f "${repo_path}/REVERT_HEAD"; then
-		r="|REVERTING"
-		return 0;
-	elif __git_eread "${repo_path}/sequencer/todo" todo; then
+	if [[ -f "${repo_path}/CHERRY_PICK_HEAD" ]]; then
+		echo "|CHERRY-PICKING"
+	elif [[ -f "${repo_path}/REVERT_HEAD" ]]; then
+		echo "|REVERTING"
+	elif [[ -r "${repo_path}/sequencer/todo" ]] && read todo < "${repo_path}/sequencer/todo"; then
 		case "$todo" in
 			p[\ \	]|pick[\ \	]*)
-				r="|CHERRY-PICKING"
-				return 0
-			;;
+				echo "|CHERRY-PICKING" ;;
 			revert[\ \	]*)
-				r="|REVERTING"
-				return 0
-			;;
+				echo "|REVERTING" ;;
 		esac
 	fi
-	return 1
 }
-local total=""
+local s
 if [[ -d "${repo_path}/rebase-merge" ]]; then
 	if [[ -f "${repo_path}/rebase-merge/interactive" ]]; then
-		r=">R>-i"
+		echo ">R>|i"
 	else
-		r=">R>"
+		echo ">R>"
 	fi
-else
-	if [[ -d "${repo_path}/rebase-apply" ]]; then
-		if [[ -f "${repo_path}/rebase-apply/rebasing" ]]; then
-			r=">R>"
-		elif [[ -f "${repo_path}/rebase-apply/applying" ]]; then
-			r="|AM"
-		else
-			r="|AM/REBASE"
-		fi
-	elif [[ -f "${repo_path}/MERGE_HEAD" ]]; then
-		r=">M<"
-	elif __git_sequencer_status; then
-		#pass
-	elif [[ -f "${repo_path}/BISECT_LOG" ]]; then
-		r="<B>"
+elif [[ -d "${repo_path}/rebase-apply" ]]; then
+	if [[ -f "${repo_path}/rebase-apply/rebasing" ]]; then
+		echo ">R>"
+	elif [[ -f "${repo_path}/rebase-apply/applying" ]]; then
+		echo ">R>|AM"
+	else
+		echo ">R>|AM/REBASE"
 	fi
+elif [[ -f "${repo_path}/MERGE_HEAD" ]]; then
+	echo ">M<"
+elif s=$(__git_sequencer_status); then
+	echo "$s"
+elif [[ -f "${repo_path}/BISECT_LOG" ]]; then
+	echo "<B>"
 fi
 
 
