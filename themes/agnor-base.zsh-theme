@@ -172,8 +172,7 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	local -a FLAGS=('--porcelain')
 	[[ "$DISABLE_UNTRACKED_FILES_DIRTY" == "true" ]] && FLAGS+='--untracked-files=no'
 	[[ "$GIT_STATUS_IGNORE_SUBMODULES" != "git" ]] && FLAGS+="--ignore-submodules=${GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
-	local STATUS=$(command git status ${FLAGS} 2> /dev/null | tail -n1)
-	[[ -n $STATUS ]] && echo '*'
+	[[ -n $(git status ${FLAGS} 2>/dev/null | tail -n1) ]] && echo '*'
 }
 prompt_git_def() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
@@ -284,23 +283,24 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 
 (( $+parameters[SHOW_GIT_SEGMENT_REMOTE] )) || SHOW_GIT_SEGMENT_REMOTE=true # default value
 (( $+parameters[SHOW_GIT_SEGMENT_STASH] ))  || SHOW_GIT_SEGMENT_STASH=true # default value
-prompt_git() { # Git: branch/detached head, dirty status
+prompt_git0() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
-	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		
 		if [[ $SHOW_GIT_SEGMENT_STASH != false ]]; then
-			# local stashes=$(git stash list | wc -l)
-			local stashes=$(git stash list -n 1 | wc -l)
+			local stashes=$(git stash list | wc -l)
+			# local stashes=$(git rev-list --walk-reflogs --count refs/stash 2>/dev/hull)
+			# local stashes=$(git rev-parse --verify --quiet refs/stash 2>/dev/hull)
+			# local stashes=$(git stash list -n 1 | wc -l)
 			if [[ stashes -ne 0 ]]; then
-				prompt_segment white black "+${stashes##*(  )}$(print_icon ETC_ICON)" # ⚙
+				prompt_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
 			fi
 		fi
 		
-		local ref_symbol ref=$(git symbolic-ref HEAD 2> /dev/null)
+		local ref_symbol ref=$(git symbolic-ref HEAD 2>/dev/null)
 		if [[ -z $ref ]]; then
-			ref=$(git rev-parse --short HEAD 2> /dev/null) || return 0
-			# ref=$(git show-ref --head -s --abbrev |head -n1 2> /dev/null) || return 0
+			ref=$(git rev-parse --short HEAD 2>/dev/null) || return 1
 			ref_symbol="➦"
 		else
 			ref="${ref/refs\/heads\//}"
@@ -316,12 +316,15 @@ prompt_git() { # Git: branch/detached head, dirty status
 			mode=" >R>"
 		fi
 		
-		local remote="${$(git rev-parse --verify ${hook_com[branch]}@{upstream} --symbolic-full-name 2>/dev/null)/refs\/remotes\/}"
+		# local remote="${$(git rev-parse --symbolic-full-name --verify @{upstream} 2>/dev/null)/refs\/remotes\/}"
+		# local remote="$(git rev-parse --abbrev-ref --verify @{upstream} 2>/dev/null)"
+		local remote="$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)"
 		local ahead behind
 		if [[ -n ${remote} ]]; then
 			remote="${remote/\/$ref/}"
-			ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l)
-			behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l)
+			# ahead=$(git rev-list @{upstream}..HEAD 2>/dev/null | wc -l)
+			ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null)
+			behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null)
 		fi
 		
 		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
@@ -349,7 +352,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		echo -n "${ref_symbol} ${ref}"
 		
-		local tag=$(git describe --exact-match --tags "$(git rev-parse HEAD 2> /dev/null)" 2> /dev/null)
+		local tag=$(git describe --exact-match --tags 2> /dev/null)
 		[[ -n $tag ]] && echo -n " ☗ $tag"
 		
 		[[ $ahead -ne "0" ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
@@ -369,6 +372,12 @@ prompt_git() { # Git: branch/detached head, dirty status
 			fi
 			echo -n "\uE0A0 $remote" #  # VCS_BRANCH_ICON
 			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		fi
+	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
+		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
+			prompt_segment cyan black "BARE REPO"
+		else
+			prompt_segment cyan black "GIT_DIR!"
 		fi
 	fi
 	# ···
@@ -450,5 +459,61 @@ build_right_prompt() {
 	prompt_right_end
 }
 # RPROMPT='%{'$'\e[1A''%}%{%f%b%k%}$(build_right_prompt)%{$reset_color%}%{'$'\e[1B''%}'
+
+
+
+__git_eread() {
+	[[ -r "$1" ]] && read "$2" < "$1"
+}
+
+# see if a cherry-pick or revert is in progress, if the user has committed a
+# conflict resolution with 'git commit' in the middle of a sequence of picks or
+# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
+__git_sequencer_status() {
+	local todo
+	if test -f "${repo_path}/CHERRY_PICK_HEAD"; then
+		r="|CHERRY-PICKING"
+		return 0;
+	elif test -f "${repo_path}/REVERT_HEAD"; then
+		r="|REVERTING"
+		return 0;
+	elif __git_eread "${repo_path}/sequencer/todo" todo; then
+		case "$todo" in
+			p[\ \	]|pick[\ \	]*)
+				r="|CHERRY-PICKING"
+				return 0
+			;;
+			revert[\ \	]*)
+				r="|REVERTING"
+				return 0
+			;;
+		esac
+	fi
+	return 1
+}
+local total=""
+if [[ -d "${repo_path}/rebase-merge" ]]; then
+	if [[ -f "${repo_path}/rebase-merge/interactive" ]]; then
+		r=">R>-i"
+	else
+		r=">R>"
+	fi
+else
+	if [[ -d "${repo_path}/rebase-apply" ]]; then
+		if [[ -f "${repo_path}/rebase-apply/rebasing" ]]; then
+			r=">R>"
+		elif [[ -f "${repo_path}/rebase-apply/applying" ]]; then
+			r="|AM"
+		else
+			r="|AM/REBASE"
+		fi
+	elif [[ -f "${repo_path}/MERGE_HEAD" ]]; then
+		r=">M<"
+	elif __git_sequencer_status; then
+		#pass
+	elif [[ -f "${repo_path}/BISECT_LOG" ]]; then
+		r="<B>"
+	fi
+fi
 
 
