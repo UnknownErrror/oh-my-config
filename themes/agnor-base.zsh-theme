@@ -30,7 +30,7 @@ prompt_end() {
 		echo -n "%{%k%}"
 	fi
 	echo -n "%{%f%}"
-	CURRENT_BG=''
+	CURRENT_BG='NONE'
 }
 
 prompt_right_segment() { # prompt_right_segment bg fg segment
@@ -49,7 +49,7 @@ prompt_right_segment() { # prompt_right_segment bg fg segment
 prompt_right_end() {
 	#echo -n "%{%f%}"
 	echo -n "%{%k%}"
-	CURRENT_RIGHT_BG=''
+	CURRENT_RIGHT_BG='NONE'
 }
 
 
@@ -122,12 +122,38 @@ prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
 			prompt_segment cyan white "$icon"
 		fi
 	fi
+	echo -n "%1(j.JOBS%j job%2(j.s.).)"
 }
 
-prompt_context() { # Context: ((ssh) <user>@<hostname> / <user>@<hostname>)
-	if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]] || [[ -n "$SSH_TTY" ]]; then
+function color256() {
+	local red=$1; shift
+	local green=$2; shift
+	local blue=$3; shift
+	echo -n $[$red * 36 + $green * 6 + $blue + 16]
+}
+function fg256() {
+	echo -n $'\e[38;5;'$(color256 "$@")"m"
+}
+function bg256() {
+	echo -n $'\e[48;5;'$(color256 "$@")"m"
+}
+
+prompt_context() { # Context: ((ssh) <user>@<hostname> / <user>@<hostname>) # [EX]
+	local shell_deep=${(%):-%L}
+	if [[ shell_deep -gt 1 ]] && prompt_segment black default "$shell_deep"
+	
+	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
 		prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
-	elif [[ "$USER" != "$DEFAULT_USER" ]]; then
+	elif [[ -n $STY ]]; then
+		prompt_segment black default "(screen) %(!.%{%F{yellow}%}.)$USER@%m"
+	elif [[ -n $TMUX ]]; then
+		local session_name="$(tmux display-message -p '#S')"
+		if [[ -n $session_name ]]; then
+			prompt_segment black magenta "(tmux@$session_name) %(!.%{%F{yellow}%}.%{%F{default}%})$USER@%m"
+		else
+			prompt_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})$USER@%m"
+		fi
+	elif [[ $USER != $DEFAULT_USER ]]; then
 		prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
 	fi
 }
@@ -165,97 +191,49 @@ prompt_time() { # System time
 	prompt_segment black default "$(primt_icon TIME_ICON) %D{%H:%M:%S}"
 }
 prompt_date() { # System date
-	prompt_segment black default "$(print_icon DATE_ICON) %D{%d.%m.%y}"
+	prompt_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
 
 # Configurable: DISABLE_UNTRACKED_FILES_DIRTY, GIT_STATUS_IGNORE_SUBMODULES
 function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	local -a FLAGS=('--porcelain')
-	[[ "$DISABLE_UNTRACKED_FILES_DIRTY" == "true" ]] && FLAGS+='--untracked-files=no'
-	[[ "$GIT_STATUS_IGNORE_SUBMODULES" != "git" ]] && FLAGS+="--ignore-submodules=${GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
+	[[ ${DISABLE_UNTRACKED_FILES_DIRTY} == true ]] && FLAGS+='--untracked-files=no'
+	[[ ${GIT_STATUS_IGNORE_SUBMODULES} != "git" ]] && FLAGS+="--ignore-submodules=${GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
 	[[ -n $(git status ${FLAGS} 2>/dev/null | tail -n1) ]] && echo '*'
 }
-prompt_git_def() { # Git: branch/detached head, dirty status
-	(( $+commands[git] )) || return
-	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-		local dirty=$(agnor_parse_git_dirty)
-		local ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="➦ $(git rev-parse --short HEAD 2> /dev/null)"
-		if [[ -n $dirty ]]; then
-			prompt_segment yellow black
-		else
-			prompt_segment green black
-		fi
-		local mode repo_path=$(git rev-parse --git-dir 2>/dev/null)
-		if [[ -e "${repo_path}/BISECT_LOG" ]]; then
-			mode=" <B>"
-		elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
-			mode=" >M<"
-		elif [[ -e "${repo_path}/rebase" || -e "${repo_path}/rebase-apply" || -e "${repo_path}/rebase-merge" || -e "${repo_path}/../.dotest" ]]; then
-			mode=" >R>"
-		fi
-		
-		setopt PROMPT_SUBST
-		autoload -Uz vcs_info
-		zstyle ':vcs_info:*' enable git
-		zstyle ':vcs_info:*' get-revision true
-		zstyle ':vcs_info:*' check-for-changes true
-		zstyle ':vcs_info:*' stagedstr $'\u271A' # ✚ # VCS_UNSTAGED_ICON
-		zstyle ':vcs_info:*' unstagedstr $'\u25CF' # ● # VCS_STAGED_ICON
-		zstyle ':vcs_info:*' formats ' %u%c'
-		zstyle ':vcs_info:*' actionformats ' %u%c'
-		vcs_info
-		
-		local PL_BRANCH_CHAR=$'\uE0A0' #  # VCS_BRANCH_ICON
-		echo -n "${ref/refs\/heads\//$PL_BRANCH_CHAR }${vcs_info_msg_0_%% }${mode}"
-	fi
-}
-
-
-
 
 prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂▸◄►◆☀★☗☊✔✖❮❯⚑⚙
-	local modified untracked added deleted stashed
+	local modified untracked added deleted
 
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-		local git_status=$(git status --porcelain 2> /dev/null)
+		local porcelain=$(git status --porcelain 2> /dev/null)
 		
-		local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
+		local untracked num_untracked=$(echo $porcelain | grep -c "^??")
+		[[ $num_untracked -gt 0 ]] && untracked=" $num_untracked\u2026"
+		echo ${untracked}
 
-		local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}") # new untracked files preceeded by their number
-		# [[ $number_of_untracked_files -gt 0 ]] && untracked=" $number_of_untracked_files◆"
-		[[ $number_of_untracked_files -gt 0 ]] && untracked=" $number_of_untracked_files☀"
+		local added num_added=$(echo $porcelain | grep -c "^A")
+		[[ $num_added -gt 0 ]] && added=" $num_added✚"
+		echo ${added}
 
-		local number_added=$(\grep -c "^A" <<< "${git_status}") # added files from the new untracked ones preceeded by their number
-		[[ $number_added -gt 0 ]] && added=" $number_added✚"
+		local modified num_modified=$(echo $porcelain | grep -c "^.M") num_added_modified=$(echo $porcelain | grep -c "^M") num_added_renamed=$(echo $porcelain | grep -c "^R")
+		# [[ $num_modified -gt 0 ]] && modified=" $num_modified●"
+		[[ $num_modified -gt 0 ]] && modified=" $num_modified\u2022" # •
+		[[ $num_added_modified -gt 0 || $num_added_renamed -gt 0 ]] && modified="${modified:= •}$((num_added_modified+num_added_renamed))±"
+		echo ${modified}
 
-		local number_modified=$(\grep -c "^.M" <<< "${git_status}") # modified files preceeded by their number
-		if [[ $number_modified -gt 0 ]]; then
-			modified=" $number_modified●"
-		fi
-
-		local number_added_modified=$(\grep -c "^M" <<< "${git_status}")
-		local number_added_renamed=$(\grep -c "^R" <<< "${git_status}")
-		if [[ $number_modified -gt 0 && $number_added_modified -gt 0 ]]; then
-			modified="$modified$((number_added_modified+number_added_renamed))±"
-		elif [[ $number_added_modified -gt 0 ]]; then
-			modified=" ●$((number_added_modified+number_added_renamed))±"
-		fi
-
-		local number_deleted=$(\grep -c "^.D" <<< "${git_status}") # deleted files preceeded by their number
-		if [[ $number_deleted -gt 0 ]]; then
-			deleted=" $number_deleted‒"
-		fi
-		local number_added_deleted=$(\grep -c "^D" <<< "${git_status}")
-		if [[ $number_deleted -gt 0 && $number_added_deleted -gt 0 ]]; then
-			deleted="$deleted$number_added_deleted±"
-		elif [[ $number_added_deleted -gt 0 ]]; then
-			deleted=" ‒$number_added_deleted±"
-		fi
+		local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_added_deleted=$(echo $porcelain | grep -c "^D")
+		[[ $num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
+		[[ $num_added_deleted -gt 0 ]] && deleted="${deleted:= -}$num_added_deleted±"
+		echo ${deleted}
+		
+		if [[ $num_added -gt 0 || $num_added_modified -gt 0 || $num_added_deleted -gt 0 ]]; then ready_commit=' ⚑'; fi
+		
 		## ±	added files from the modifies or delete ones preceeded by their number
 		
-		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
-		#           master                        12☀ 3●1± 3‒1± 12✚
-		
+		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12… 3●1± 3‒1± 12✚ ⚑
+		#           master                        12… 3●1± 3‒1± 12✚
+		#           master                        12… 3•1± 3‒1± 12✚
 		
 		# |> +2
 		#  master ☗ tag ↑12 ✔ <B>      |>      ● ✚      |>      origin ↓2
@@ -292,7 +270,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		fi
 		
 		local ref_symbol ref=$(git symbolic-ref HEAD 2>/dev/null)
-		if [[ -z $ref ]]; then
+		if [[ -z $ref ]]; then # Branch () / detached head (➦)
 			ref=$(git rev-parse --short HEAD 2>/dev/null) || return 1
 			ref_symbol="➦"
 		else
@@ -300,7 +278,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 			ref_symbol=$'\uE0A0' #  # VCS_BRANCH_ICON
 		fi
 		
-		# local remote="$(git rev-parse --abbrev-ref --verify @{upstream} 2>/dev/null)"
+		# local ahead behind remote="$(git rev-parse --abbrev-ref --verify @{upstream} 2>/dev/null)"
 		local ahead behind remote="$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)"
 		if [[ -n ${remote} ]]; then
 			remote="${remote/\/$ref/}"
@@ -308,28 +286,15 @@ prompt_git() { # Git: branch/detached head, dirty status
 			behind=$(git rev-list HEAD..@{upstream} 2>/dev/null | wc -l)
 		fi
 		
-		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
+		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then # [EXPERIMENT]
 			prompt_segment red white # diverged state
 		elif [[ ${SHOW_GIT_SEGMENT_REMOTE} == false && $behind -ne 0 ]]; then
 			prompt_segment magenta white # merge/rebase is needed
 		elif [[ -n $dirty ]]; then
 			prompt_segment yellow black
 		else
-			prompt_segment green black
+			prompt_segment green white # black
 		fi
-		
-		(){ # vcs_info
-			setopt PROMPT_SUBST
-			autoload -Uz vcs_info
-			zstyle ':vcs_info:*' enable git
-			zstyle ':vcs_info:*' get-revision true
-			zstyle ':vcs_info:*' check-for-changes true
-			zstyle ':vcs_info:*' stagedstr $'\u271A' # ✚ # VCS_UNSTAGED_ICON
-			zstyle ':vcs_info:*' unstagedstr $'\u25CF' # ● # VCS_STAGED_ICON
-			zstyle ':vcs_info:*' formats ' %u%c'
-			zstyle ':vcs_info:*' actionformats ' %u%c'
-			vcs_info
-		}
 		
 		echo -n "${ref_symbol} ${ref}"
 		
@@ -396,6 +361,49 @@ prompt_git() { # Git: branch/detached head, dirty status
 	fi
 }
 
+prompt_git_remotes() {
+	eval "remotes=(`git remote | sed 's/\n/ /'`)"
+	for remote in $remotes; do
+		prompt_git_remote $remote
+	done
+}
+prompt_git_remote() {
+	local fg
+	local current_branch
+	local remote
+	local ahead behind
+	local remote_status
+	local remote=${1:-"origin"}
+
+	fg=black
+
+	current_branch=${$(git rev-parse --abbrev-ref HEAD)}
+	remote_path=${$(git rev-parse --verify remotes\/${remote}\/${current_branch} --symbolic-full-name 2> /dev/null)}
+
+	if [[ -n ${remote_path} ]] ; then
+		ahead=$(git rev-list ${remote_path}..HEAD 2> /dev/null | wc -l | tr -d ' ')
+		behind=$(git rev-list HEAD..${remote_path} 2> /dev/null | wc -l | tr -d ' ')
+
+		if [[ $ahead -eq 0 && $behind -eq 0 ]] ; then
+			remote_status="○ "
+		else
+			if [[ $ahead -gt 0 ]] ; then
+				fg=yellow
+			fi
+
+			if [[ $behind -gt 0 ]] ; then
+				fg=red
+			fi
+
+			remote_status="+${ahead} -${behind}"
+		fi
+	else
+		remote_status="--"
+	fi
+
+	prompt_segment cyan $fg "⏏ $remote $remote_status"
+}
+
 
 prompt_bzr() { # [-] Bzr
 	(( $+commands[bzr] )) || return
@@ -446,11 +454,12 @@ prompt_hg() {  # [-] Mercurial
 	fi
 }
 
-
-prompt_end_chars() { # Prompt newline and ending characters ($ / #)
-	echo ''
-	[[ $UID -eq 0 ]] && echo -n ' #' || echo -n ' $'
-	echo -n " ❯"
+prompt_newline() {
+	prompt_end
+	echo
+}
+prompt_end_chars() { # Prompt ending characters ($ / #) ❯
+	echo -n " %(!.#.$) ❯"
 }
 
 build_prompt() {
@@ -461,8 +470,13 @@ build_prompt() {
 	prompt_context
 	prompt_dir_lite
 	prompt_git
-	
 	prompt_end
+	
+	# if [[ $(tput cols) -ge ${TRIGGER_WIDTH:-100} ]]; then
+		# pass
+	# fi
+	
+	prompt_end_chars
 }
 
 PROMPT='%{%f%b%k%}$(build_prompt) '
@@ -472,7 +486,69 @@ build_right_prompt() {
 	prompt_time
 	prompt_right_end
 }
-# RPROMPT='%{'$'\e[1A''%}%{%f%b%k%}$(build_right_prompt)%{$reset_color%}%{'$'\e[1B''%}'
+# RPROMPT='%{$reset_color%}%{'$'\e[1A''%}%{%f%b%k%}$(build_right_prompt)%{$reset_color%}%{'$'\e[1B''%}'
+
+
+# Ensure that the prompt is redrawn when the terminal size changes.
+TRAPWINCH() {
+	zle && { zle reset-prompt; zle -R }
+}
+
+
+
+POWERLINE_A_COLOR="6" # normal cyan
+POWERLINE_B_COLOR='12' # bright blue
+POWERLINE_C_COLOR="4" # normal blue
+
+
+
+LSCOLORS="cxFxgxhxbxeadaabagDdad" # BSD
+LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0;41:sg=0;46:tw=1;33;43:ow=0;43:" # Linux
+
+
+
+(){ # Setup
+	setopt PROMPT_SUBST
+	autoload -Uz vcs_info
+	zstyle ':vcs_info:*' enable git
+	zstyle ':vcs_info:*' get-revision true
+	zstyle ':vcs_info:*' check-for-changes true
+	zstyle ':vcs_info:*' stagedstr $'\u271A' # ✚ # VCS_UNSTAGED_ICON
+	zstyle ':vcs_info:*' unstagedstr $'\u25CF' # ● # VCS_STAGED_ICON
+	zstyle ':vcs_info:*' formats ' %u%c'
+	zstyle ':vcs_info:*' actionformats ' %u%c'
+	
+	
+	
+	autoload -Uz add-zsh-hook
+	local start_time=$SECONDS
+	prompt_agnor_preexec() {
+		start_time=$SECONDS
+	}
+	prompt_agnor_precmd() {
+		local timer_result=$(($SECONDS-$start_time))
+		if [[ $timer_result -ge 3600 ]]; then
+			local timer_hours remainder timer_minutes timer_seconds
+			let "timer_hours = $timer_result / 3600"
+			let "remainder = $timer_result % 3600"
+			let "timer_minutes = $remainder / 60"
+			let "timer_seconds = $remainder % 60"
+			print -P "%B%F{red}>>> elapsed time ${timer_hours}h${timer_minutes}m${timer_seconds}s%b"
+		elif [[ $timer_result -ge 60 ]]; then
+			local timer_minutes timer_seconds
+			let "timer_minutes = $timer_result / 60"
+			let "timer_seconds = $timer_result % 60"
+			print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m${timer_seconds}s%b"
+		elif [[ $timer_result -gt 10 ]]; then
+			print -P "%B%F{green}>>> elapsed time ${timer_result}s%b"
+		fi
+		start_time=$SECONDS
+		vcs_info
+	}
+	
+	add-zsh-hook preexec prompt_agnor_preexec
+	add-zsh-hook precmd prompt_agnor_precmd
+}
 
 
 : "
@@ -509,16 +585,16 @@ function build_prompt000 {
         if [[ $number_of_logs -eq 0 ]]; then
             local just_init=true
         else
-            local git_status="$(git status --porcelain 2> /dev/null)"
+            local porcelain="$(git status --porcelain 2> /dev/null)"
             
-            if [[ $git_status =~ ($'\n'|^).M ]]; then local has_modifications=true; fi
-            if [[ $git_status =~ ($'\n'|^)M ]]; then local has_modifications_cached=true; fi
-            if [[ $git_status =~ ($'\n'|^)A ]]; then local has_adds=true; fi
-            if [[ $git_status =~ ($'\n'|^).D ]]; then local has_deletions=true; fi
-            if [[ $git_status =~ ($'\n'|^)D ]]; then local has_deletions_cached=true; fi
-            if [[ $git_status =~ ($'\n'|^)[MAD] && ! $git_status =~ ($'\n'|^).[MAD\?] ]]; then local ready_to_commit=true; fi
+            if [[ $porcelain =~ ($'\n'|^).M ]]; then local has_modifications=true; fi
+            if [[ $porcelain =~ ($'\n'|^)M ]]; then local has_modifications_cached=true; fi
+            if [[ $porcelain =~ ($'\n'|^)A ]]; then local has_adds=true; fi
+            if [[ $porcelain =~ ($'\n'|^).D ]]; then local has_deletions=true; fi
+            if [[ $porcelain =~ ($'\n'|^)D ]]; then local has_deletions_cached=true; fi
+            if [[ $porcelain =~ ($'\n'|^)[MAD] && ! $porcelain =~ ($'\n'|^).[MAD\?] ]]; then local ready_to_commit=true; fi
 
-            local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}")
+            local number_of_untracked_files=$(echo $porcelain | grep -c "^??")
             if [[ $number_of_untracked_files -gt 0 ]]; then local has_untracked_files=true; fi
 
             if [[ $has_diverged == false && $commits_ahead -gt 0 ]]; then local should_push=true; fi

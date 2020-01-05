@@ -51,11 +51,10 @@ build_prompt() {
 	prompt_context
 	
 	prompt_dir
-	# prompt_dir_rw_status
 	prompt_git
 	# prompt_bzr
 	# prompt_hg
-	prompt_end
+	prompt_newline
 	
 	prompt_end_chars
 }
