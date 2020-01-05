@@ -122,25 +122,11 @@ prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
 			prompt_segment cyan white "$icon"
 		fi
 	fi
-	echo -n "%1(j.JOBS%j job%2(j.s.).)"
 }
 
-function color256() {
-	local red=$1; shift
-	local green=$2; shift
-	local blue=$3; shift
-	echo -n $[$red * 36 + $green * 6 + $blue + 16]
-}
-function fg256() {
-	echo -n $'\e[38;5;'$(color256 "$@")"m"
-}
-function bg256() {
-	echo -n $'\e[48;5;'$(color256 "$@")"m"
-}
-
-prompt_context() { # Context: ((ssh) <user>@<hostname> / <user>@<hostname>) # [EX]
+prompt_context() { # Context: ((ssh) <user>@<hostname> / (screen) <user>@<hostname> / (tmux) <user>@<hostname> / <user>@<hostname>)
 	local shell_deep=${(%):-%L}
-	if [[ shell_deep -gt 1 ]] && prompt_segment black default "$shell_deep"
+	[[ shell_deep -gt 1 ]] && prompt_segment black default "$shell_deep"
 	
 	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
 		prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
@@ -206,28 +192,6 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 	local modified untracked added deleted
 
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-		local porcelain=$(git status --porcelain 2> /dev/null)
-		
-		local untracked num_untracked=$(echo $porcelain | grep -c "^??")
-		[[ $num_untracked -gt 0 ]] && untracked=" $num_untracked\u2026"
-		echo ${untracked}
-
-		local added num_added=$(echo $porcelain | grep -c "^A")
-		[[ $num_added -gt 0 ]] && added=" $num_added✚"
-		echo ${added}
-
-		local modified num_modified=$(echo $porcelain | grep -c "^.M") num_added_modified=$(echo $porcelain | grep -c "^M") num_added_renamed=$(echo $porcelain | grep -c "^R")
-		# [[ $num_modified -gt 0 ]] && modified=" $num_modified●"
-		[[ $num_modified -gt 0 ]] && modified=" $num_modified\u2022" # •
-		[[ $num_added_modified -gt 0 || $num_added_renamed -gt 0 ]] && modified="${modified:= •}$((num_added_modified+num_added_renamed))±"
-		echo ${modified}
-
-		local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_added_deleted=$(echo $porcelain | grep -c "^D")
-		[[ $num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
-		[[ $num_added_deleted -gt 0 ]] && deleted="${deleted:= -}$num_added_deleted±"
-		echo ${deleted}
-		
-		if [[ $num_added -gt 0 || $num_added_modified -gt 0 || $num_added_deleted -gt 0 ]]; then ready_commit=' ⚑'; fi
 		
 		## ±	added files from the modifies or delete ones preceeded by their number
 		
@@ -242,17 +206,6 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 	fi
 }
 
-
-# Git statuses:
-# - Branch () or detached head (➦)
-# - Dirty working directory state (orange (dirty) / green (✔))
-# - Current branch / SHA1 in detached head state
-# - Remote branch name (if you're tracking a remote branch)
-# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
-# - Stashes count
-# - <B> - Bisect state on the current branch
-# - >M< - Merge state on the current branch
-# - >R> - Rebase state on the current branch
 
 (( $+parameters[SHOW_GIT_SEGMENT_REMOTE] )) || SHOW_GIT_SEGMENT_REMOTE=true # default value
 (( $+parameters[SHOW_GIT_SEGMENT_STASH] ))  || SHOW_GIT_SEGMENT_STASH=true # default value
@@ -340,7 +293,27 @@ prompt_git() { # Git: branch/detached head, dirty status
 			echo -n " ${result}"
 		fi
 		
-		prompt_segment yellow black "${vcs_info_msg_0_%% }"
+		(){
+			local porcelain=$(git status --porcelain 2> /dev/null)
+			
+			local num_untracked=$(echo $porcelain | grep -c "^??")
+			[[ $num_untracked -gt 0 ]] && echo " $num_untracked\u2026"
+
+			local num_added=$(echo $porcelain | grep -c "^A")
+			[[ $num_added -gt 0 ]] && echo " $num_added✚"
+
+			local modified num_modified=$(echo $porcelain | grep -c "^.M") num_cached_modified=$(echo $porcelain | grep -c "^M") num_cached_renamed=$(echo $porcelain | grep -c "^R")
+			[[ $num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
+			[[ $num_cached_modified -gt 0 || $num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
+			echo ${modified}
+
+			local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_cached_deleted=$(echo $porcelain | grep -c "^D")
+			[[ $num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
+			[[ $num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
+			echo ${deleted}
+			
+			[[ $num_added -gt 0 || $num_cached_modified -gt 0 || $num_cached_deleted -gt 0 ]] && echo ' ⚑'
+		}
 		
 		if [[ ${SHOW_GIT_SEGMENT_REMOTE} != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
@@ -403,6 +376,17 @@ prompt_git_remote() {
 
 	prompt_segment cyan $fg "⏏ $remote $remote_status"
 }
+
+# Git statuses:
+# - Branch () or detached head (➦)
+# - Dirty working directory state (orange (dirty) / green (✔))
+# - Current branch / SHA1 in detached head state
+# - Remote branch name (if you're tracking a remote branch)
+# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
+# - Stashes count
+# - <B> - Bisect state on the current branch
+# - >M< - Merge state on the current branch
+# - >R> - Rebase state on the current branch
 
 
 prompt_bzr() { # [-] Bzr
@@ -489,8 +473,7 @@ build_right_prompt() {
 # RPROMPT='%{$reset_color%}%{'$'\e[1A''%}%{%f%b%k%}$(build_right_prompt)%{$reset_color%}%{'$'\e[1B''%}'
 
 
-# Ensure that the prompt is redrawn when the terminal size changes.
-TRAPWINCH() {
+TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
 	zle && { zle reset-prompt; zle -R }
 }
 
@@ -507,17 +490,22 @@ LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0
 
 
 
+function color256() {
+	local red=$1; shift
+	local green=$2; shift
+	local blue=$3; shift
+	echo -n $[$red * 36 + $green * 6 + $blue + 16]
+}
+function fg256() {
+	echo -n $'\e[38;5;'$(color256 "$@")"m"
+}
+function bg256() {
+	echo -n $'\e[48;5;'$(color256 "$@")"m"
+}
+
+
 (){ # Setup
 	setopt PROMPT_SUBST
-	autoload -Uz vcs_info
-	zstyle ':vcs_info:*' enable git
-	zstyle ':vcs_info:*' get-revision true
-	zstyle ':vcs_info:*' check-for-changes true
-	zstyle ':vcs_info:*' stagedstr $'\u271A' # ✚ # VCS_UNSTAGED_ICON
-	zstyle ':vcs_info:*' unstagedstr $'\u25CF' # ● # VCS_STAGED_ICON
-	zstyle ':vcs_info:*' formats ' %u%c'
-	zstyle ':vcs_info:*' actionformats ' %u%c'
-	
 	
 	
 	autoload -Uz add-zsh-hook
@@ -543,7 +531,7 @@ LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0
 			print -P "%B%F{green}>>> elapsed time ${timer_result}s%b"
 		fi
 		start_time=$SECONDS
-		vcs_info
+		# vcs_info
 	}
 	
 	add-zsh-hook preexec prompt_agnor_preexec
@@ -570,42 +558,92 @@ isUntracked (MkMiniStatus index _) =
 "
 
 
-function build_prompt000 {
-    local prompt=""
-    
-    # Git info
-    local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
-    if [[ -n $current_commit_hash ]]; then local is_a_git_repo=true; fi
-    
-    if [[ $is_a_git_repo == true ]]; then
-        local current_branch=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
-        if [[ $current_branch == 'HEAD' ]]; then local detached=true; fi
 
-        local number_of_logs="$(git log --pretty=oneline -n1 2> /dev/null | wc -l)"
-        if [[ $number_of_logs -eq 0 ]]; then
-            local just_init=true
-        else
-            local porcelain="$(git status --porcelain 2> /dev/null)"
-            
-            if [[ $porcelain =~ ($'\n'|^).M ]]; then local has_modifications=true; fi
-            if [[ $porcelain =~ ($'\n'|^)M ]]; then local has_modifications_cached=true; fi
-            if [[ $porcelain =~ ($'\n'|^)A ]]; then local has_adds=true; fi
-            if [[ $porcelain =~ ($'\n'|^).D ]]; then local has_deletions=true; fi
-            if [[ $porcelain =~ ($'\n'|^)D ]]; then local has_deletions_cached=true; fi
-            if [[ $porcelain =~ ($'\n'|^)[MAD] && ! $porcelain =~ ($'\n'|^).[MAD\?] ]]; then local ready_to_commit=true; fi
+prompt_bureau_setup () {
+	add-zsh-hook precmd prompt_bureau_precmd
+	add-zsh-hook zshexit prompt_bureau_exit
+}
+prompt_bureau_prompt () {
+	local color=green
+	if [ "$UID" = "0" ]; then color=red; fi
+	echo "> %{$fg[${color}]%}%(!.#.$)%{$reset_color%} "
+}
+prompt_bureau_rprompt_file() {
+	echo "/tmp/$(whoami)_zsh_rprompt.$$"
+}
+BUREAU_ASYNC_PROC=0
+prompt_bureau_precmd () {
+	# kill child if necessary
+	if [[ "${BUREAU_ASYNC_PROC}" != 0 ]]; then
+		kill -s HUP $BUREAU_ASYNC_PROC >/dev/null 2>&1 || :
+	fi
 
-            local number_of_untracked_files=$(echo $porcelain | grep -c "^??")
-            if [[ $number_of_untracked_files -gt 0 ]]; then local has_untracked_files=true; fi
+	# start background computation
+	prompt_bureau_vcs_prompt &!
+	BUREAU_ASYNC_PROC=$!
+}
+prompt_bureau_vcs_prompt() {
+	vcs_info
+	printf "%s" "$vcs_info_msg_0_" > "$(prompt_bureau_rprompt_file)"
+	kill -s USR1 $$ # signal parent
+}
+prompt_bureau_exit() {
+	rm -f "$(prompt_bureau_rprompt_file)" 2> /dev/null
+}
+TRAPUSR1() {
+	RPROMPT="$(cat $(prompt_bureau_rprompt_file))" # read from temp file
+	BUREAU_ASYNC_PROC=0 # reset proc number
+	zle && zle reset-prompt # reload
+}
 
-            if [[ $has_diverged == false && $commits_ahead -gt 0 ]]; then local should_push=true; fi
-        
-            local will_rebase=$(git config --get branch.${current_branch}.rebase 2> /dev/null)
-        
-            local number_of_stashes="$(git stash list -n1 2> /dev/null | wc -l)"
-            if [[ $number_of_stashes -gt 0 ]]; then local has_stashes=true; fi
-        fi
-    fi
-    
-    echo "$(custom_build_prompt ${enabled:-true} ${current_commit_hash:-""} ${is_a_git_repo:-false} ${current_branch:-""} ${detached:-false} ${just_init:-false} ${has_upstream:-false} ${has_modifications:-false} ${has_modifications_cached:-false} ${has_adds:-false} ${has_deletions:-false} ${has_deletions_cached:-false} ${has_untracked_files:-false} ${ready_to_commit:-false} ${tag_at_current_commit:-""} ${is_on_a_tag:-false} ${has_upstream:-false} ${commits_ahead:-false} ${commits_behind:-false} ${has_diverged:-false} ${should_push:-false} ${will_rebase:-false} ${has_stashes:-false} ${action})"
-    
+
+
+_agkozak_branch_status() {
+	if [[ -n $branch ]]; then
+		local symbols i=1 k
+		local git_status="$(git status 2>&1)"
+		typeset -A messages=(
+			'+' 'new file: '
+			'x' 'deleted: '
+			'!' 'modified: '
+			'>' 'renamed: '
+			'?' 'Untracked files:'
+		)
+		for k in '+' 'x' '!' '>' '?'; do
+			case $git_status in
+				*${messages[$k]}*) symbols+="${AGKOZAK_CUSTOM_SYMBOLS[$i]:-$k}" ;;
+			esac
+			(( i++ ))
+		done
+		[[ -n $symbols ]] && symbols=" ${symbols}"
+	fi
+}
+
+function build_prompt000() {
+	local prompt=""
+	
+	# Git info
+	local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
+	if [[ -n $current_commit_hash ]]; then local is_a_git_repo=true; fi
+	
+	if [[ $is_a_git_repo == true ]]; then
+		local current_branch=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
+		if [[ $current_branch == 'HEAD' ]]; then local detached=true; fi
+
+		local number_of_logs="$(git log --pretty=oneline -n1 2> /dev/null | wc -l)"
+		if [[ $number_of_logs -eq 0 ]]; then
+			local just_init=true
+		else
+			local porcelain="$(git status --porcelain 2> /dev/null)"
+			
+			if [[ $porcelain =~ ($'\n'|^).M ]]; then local has_modifications=true; fi
+			if [[ $porcelain =~ ($'\n'|^)M ]]; then local has_modifications_cached=true; fi
+			if [[ $porcelain =~ ($'\n'|^)A ]]; then local has_adds=true; fi
+			if [[ $porcelain =~ ($'\n'|^).D ]]; then local has_deletions=true; fi
+			if [[ $porcelain =~ ($'\n'|^)D ]]; then local has_deletions_cached=true; fi
+			if [[ $porcelain =~ ($'\n'|^)[MAD] && ! $porcelain =~ ($'\n'|^).[MAD\?] ]]; then local ready_to_commit=true; fi
+
+			local will_rebase=$(git config --get branch.${current_branch}.rebase 2> /dev/null)
+		fi
+	fi
 }
