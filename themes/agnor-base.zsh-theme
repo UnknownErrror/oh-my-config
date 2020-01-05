@@ -253,17 +253,12 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		fi
 		## ±	added files from the modifies or delete ones preceeded by their number
 		
-		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀  ●1±
-		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1±  ‒1±
-		
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
-		#           master                           12☀ 3●1± 3‒1± 12✚
+		#           master                        12☀ 3●1± 3‒1± 12✚
 		
 		
 		# |> +2
-		#  master ·↑12 ● ✚ <B>             ||>  origin ·↓2
-		
-		#  master ☗ tag ↑12 ✔ <B>    ||>  ● ✚      ||>  origin ·↓2
+		#  master ☗ tag ↑12 ✔ <B>      |>      ● ✚      |>      origin ↓2
 		
 		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR}$untracked$modified$deleted$added"
 	fi
@@ -290,9 +285,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		if [[ $SHOW_GIT_SEGMENT_STASH != false ]]; then
 			local stashes=$(git stash list | wc -l)
-			# local stashes=$(git rev-list --walk-reflogs --count refs/stash 2>/dev/hull)
-			# local stashes=$(git rev-parse --verify --quiet refs/stash 2>/dev/hull)
-			# local stashes=$(git stash list -n 1 | wc -l)
+			# local stashes=$(git stash list -n1 | wc -l)
 			if [[ stashes -ne 0 ]]; then
 				prompt_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
 			fi
@@ -307,24 +300,12 @@ prompt_git() { # Git: branch/detached head, dirty status
 			ref_symbol=$'\uE0A0' #  # VCS_BRANCH_ICON
 		fi
 		
-		local mode repo_path=$(git rev-parse --git-dir 2>/dev/null)
-		if [[ -e "${repo_path}/BISECT_LOG" ]]; then
-			mode=" <B>"
-		elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
-			mode=" >M<"
-		elif [[ -e "${repo_path}/rebase" || -e "${repo_path}/rebase-apply" || -e "${repo_path}/rebase-merge" || -e "${repo_path}/../.dotest" ]]; then
-			mode=" >R>"
-		fi
-		
-		# local remote="${$(git rev-parse --symbolic-full-name --verify @{upstream} 2>/dev/null)/refs\/remotes\/}"
 		# local remote="$(git rev-parse --abbrev-ref --verify @{upstream} 2>/dev/null)"
-		local remote="$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)"
-		local ahead behind
+		local ahead behind remote="$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)"
 		if [[ -n ${remote} ]]; then
 			remote="${remote/\/$ref/}"
-			# ahead=$(git rev-list @{upstream}..HEAD 2>/dev/null | wc -l)
-			ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null)
-			behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null)
+			ahead=$(git rev-list @{upstream}..HEAD 2>/dev/null | wc -l)
+			behind=$(git rev-list HEAD..@{upstream} 2>/dev/null | wc -l)
 		fi
 		
 		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then
@@ -353,14 +334,46 @@ prompt_git() { # Git: branch/detached head, dirty status
 		echo -n "${ref_symbol} ${ref}"
 		
 		local tag=$(git describe --exact-match --tags 2> /dev/null)
-		[[ -n $tag ]] && echo -n " ☗ $tag"
+		[[ -n $tag ]] && echo -n " ☗ ${tag}"
 		
 		[[ $ahead -ne "0" ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
 		[[ ${SHOW_GIT_SEGMENT_REMOTE} == false && $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		
 		[[ ! -n $dirty ]] && echo -n " $(print_icon OK_ICON)" # ✔
 		
-		echo -n "${mode}"
+		local git_dir=$(git rev-parse --git-dir 2>/dev/null)
+		if [[ -e "${git_dir}/BISECT_LOG" ]]; then # Modes
+			echo -n " <B>"
+		elif [[ -e "${git_dir}/MERGE_HEAD" ]]; then
+			echo -n " >M<"
+		elif [[ -e "${git_dir}/rebase" || -e "${git_dir}/../.dotest" ]]; then
+			echo -n " >R>"
+		elif [[ -e "${git_dir}/rebase-merge" ]]; then
+			if [[ -e "${git_dir}/rebase-merge/interactive" ]]; then
+				echo -n " >R[i]>"
+			else
+				echo -n " >R[m]>"
+			fi
+		elif [[ -e "${git_dir}/rebase-apply" ]]; then
+			if [[ -e "${git_dir}/rebase-apply/rebasing" ]]; then
+				echo -n " >R[rebase]>"
+			elif [[ -e "${git_dir}/rebase-apply/applying" ]]; then
+				echo -n " >R[am]>"
+			else
+				echo -n " >R[am/rebase]>"
+			fi
+		elif [[ -e "${git_dir}/CHERRY_PICK_HEAD" ]]; then
+			echo -n " [CherryPick]"
+		elif [[ -e "${git_dir}/REVERT_HEAD" ]]; then
+			echo -n " [Revert]"
+		elif local result=$(local todo; if [[ -r "${git_dir}/sequencer/todo" ]] && read todo < "${git_dir}/sequencer/todo"; then
+				case "$todo" in (p[\ \	]|pick[\ \	]*) echo -n "[CherryPick]" ;; (revert[\ \	]*) echo -n "[Revert]" ;; esac
+			fi) && [[ -n ${result} ]]; then
+			# see if a cherry-pick or revert is in progress, if the user has committed a
+			# conflict resolution with 'git commit' in the middle of a sequence of picks or
+			# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
+			echo -n " ${result}"
+		fi
 		
 		prompt_segment yellow black "${vcs_info_msg_0_%% }"
 		
@@ -370,60 +383,17 @@ prompt_git() { # Git: branch/detached head, dirty status
 			else
 				prompt_segment cyan black
 			fi
-			echo -n "\uE0A0 $remote" #  # VCS_BRANCH_ICON
+			echo -n "\uE0A0 ${remote}" #  # VCS_BRANCH_ICON
 			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		fi
 		
-		prompt_segment green default
-		# see if a cherry-pick or revert is in progress, if the user has committed a
-		# conflict resolution with 'git commit' in the middle of a sequence of picks or
-		# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
-		__git_sequencer_status() {
-			local todo
-			if [[ -e "${repo_path}/CHERRY_PICK_HEAD" ]]; then
-				echo -n ">ChP<"
-			elif [[ -e "${repo_path}/REVERT_HEAD" ]]; then
-				echo -n "<R<"
-			elif [[ -r "${repo_path}/sequencer/todo" ]] && read todo < "${repo_path}/sequencer/todo"; then
-				case "$todo" in
-					p[\ \	]|pick[\ \	]*)
-						echo -n ">ChP<" ;;
-					revert[\ \	]*)
-						echo -n "<R<" ;;
-				esac
-			fi
-		}
-		if [[ -e "${repo_path}/rebase-merge" ]]; then
-			if [[ -e "${repo_path}/rebase-merge/interactive" ]]; then
-				echo -n ">R>|i"
-			else
-				echo -n ">R>|m"
-			fi
-		elif [[ -e "${repo_path}/rebase-apply" ]]; then
-			if [[ -e "${repo_path}/rebase-apply/rebasing" ]]; then
-				echo -n ">R>"
-			elif [[ -e "${repo_path}/rebase-apply/applying" ]]; then
-				echo -n ">R>|AM"
-			else
-				echo -n ">R>|AM/REBASE"
-			fi
-		elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
-			echo -n ">M<"
-		elif local s=$(__git_sequencer_status) && [[ $s != "" ]]; then
-			echo -n "$s"
-		elif [[ -e "${repo_path}/BISECT_LOG" ]]; then
-			echo -n "<B>"
-		fi
-		
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
-		# if [[ $(git rev-parse --is-shallow-repository) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
-			prompt_segment cyan black "BARE REPO"
+			prompt_segment cyan black "bare repo"
 		else
 			prompt_segment cyan black "GIT_DIR!"
 		fi
 	fi
-	# ···
 }
 
 
@@ -505,14 +475,14 @@ build_right_prompt() {
 # RPROMPT='%{'$'\e[1A''%}%{%f%b%k%}$(build_right_prompt)%{$reset_color%}%{'$'\e[1B''%}'
 
 
-: '
+: "
 isChanged :: MiniStatus -> Bool
 isChanged (MkMiniStatus index work) =
 		work == 'M' || (work == 'D' && index /= 'D')
 
 isStaged :: MiniStatus -> Bool
 isStaged (MkMiniStatus index work) =
-		(index `elem` "MRC") || (index == 'D' && work /= 'D') || (index == 'A' && work /= 'A')
+		(index `elem` \"MRC\") || (index == 'D' && work /= 'D') || (index == 'A' && work /= 'A')
 
 isConflict :: MiniStatus -> Bool
 isConflict (MkMiniStatus index work) =
@@ -521,8 +491,7 @@ isConflict (MkMiniStatus index work) =
 isUntracked :: MiniStatus -> Bool
 isUntracked (MkMiniStatus index _) =
 		index == '?'
-
-'
+"
 
 
 function build_prompt000 {
