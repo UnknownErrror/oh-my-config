@@ -14,8 +14,8 @@ function repeat0() { # repeat <count> <command>
 	done
 }
 
-function lcd() { # cd + ls
-	cd "$1" && ls -AF
+function lcd cdl() { # cd + ls
+	cd "$@" && ls -AF
 }
 function mkcd() { # mkdir + cd
 	# mkdir -vp "$@" && eval cd "\"\$$#\""

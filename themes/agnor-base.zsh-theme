@@ -1,13 +1,11 @@
 source $ZSH/themes/agnor-icons.zsh
 
-### Segment drawing # A few utility functions to make it easy and re-usable to draw segmented prompts
+######################################
+### Segment drawing ###
+# A few utility functions to make it easy and re-usable to draw segmented prompts
 
 CURRENT_BG='NONE'
 CURRENT_RIGHT_BG='NONE'
-case ${SOLARIZED_THEME:-dark} in
-	light) CURRENT_FG='white' ;;
-	*)     CURRENT_FG='black' ;;
-esac
 
 # Special Powerline characters # Do not change this!
 SEGMENT_SEPARATOR=$'\ue0b0'
@@ -55,7 +53,10 @@ prompt_right_end() {
 }
 
 
-### Prompt components # Each component will draw itself, and hide itself if no information needs to be shown
+######################################
+### Prompt components ###
+# Each component will draw itself, and hide itself if no information needs to be shown
+
 
 function normalize_exit_status() {
 	local RETVAL=$1
@@ -177,7 +178,6 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 prompt_git_def() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-		local repo_path=$(git rev-parse --git-dir 2>/dev/null)
 		local dirty=$(agnor_parse_git_dirty)
 		local ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="➦ $(git rev-parse --short HEAD 2> /dev/null)"
 		if [[ -n $dirty ]]; then
@@ -185,7 +185,7 @@ prompt_git_def() { # Git: branch/detached head, dirty status
 		else
 			prompt_segment green black
 		fi
-		local mode
+		local mode repo_path=$(git rev-parse --git-dir 2>/dev/null)
 		if [[ -e "${repo_path}/BISECT_LOG" ]]; then
 			mode=" <B>"
 		elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
@@ -257,13 +257,13 @@ prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1±  ‒1±
 		
 		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12☀ 3●1± 3‒1± 12✚ ⚑
-		#           master                           12☀ 3●1± 3‒1± 12✚ ⚑
+		#           master                           12☀ 3●1± 3‒1± 12✚
 		
 		
 		# |> +2
-		#  master ·↑12 ● ✚ <B>             ||> origin ·↓2
+		#  master ·↑12 ● ✚ <B>             ||>  origin ·↓2
 		
-		#  master ☗ tag ↑12 ✔ <B>    ||> ● ✚      ||> origin ·↓2
+		#  master ☗ tag ↑12 ✔ <B>    ||>  ● ✚      ||>  origin ·↓2
 		
 		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR}$untracked$modified$deleted$added"
 	fi
@@ -373,6 +373,48 @@ prompt_git() { # Git: branch/detached head, dirty status
 			echo -n "\uE0A0 $remote" #  # VCS_BRANCH_ICON
 			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		fi
+		
+		prompt_segment green default
+		# see if a cherry-pick or revert is in progress, if the user has committed a
+		# conflict resolution with 'git commit' in the middle of a sequence of picks or
+		# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
+		__git_sequencer_status() {
+			local todo
+			if [[ -e "${repo_path}/CHERRY_PICK_HEAD" ]]; then
+				echo -n ">ChP<"
+			elif [[ -e "${repo_path}/REVERT_HEAD" ]]; then
+				echo -n "<R<"
+			elif [[ -r "${repo_path}/sequencer/todo" ]] && read todo < "${repo_path}/sequencer/todo"; then
+				case "$todo" in
+					p[\ \	]|pick[\ \	]*)
+						echo -n ">ChP<" ;;
+					revert[\ \	]*)
+						echo -n "<R<" ;;
+				esac
+			fi
+		}
+		if [[ -e "${repo_path}/rebase-merge" ]]; then
+			if [[ -e "${repo_path}/rebase-merge/interactive" ]]; then
+				echo -n ">R>|i"
+			else
+				echo -n ">R>|m"
+			fi
+		elif [[ -e "${repo_path}/rebase-apply" ]]; then
+			if [[ -e "${repo_path}/rebase-apply/rebasing" ]]; then
+				echo -n ">R>"
+			elif [[ -e "${repo_path}/rebase-apply/applying" ]]; then
+				echo -n ">R>|AM"
+			else
+				echo -n ">R>|AM/REBASE"
+			fi
+		elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
+			echo -n ">M<"
+		elif local s=$(__git_sequencer_status) && [[ $s != "" ]]; then
+			echo -n "$s"
+		elif [[ -e "${repo_path}/BISECT_LOG" ]]; then
+			echo -n "<B>"
+		fi
+		
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
 		# if [[ $(git rev-parse --is-shallow-repository) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
@@ -412,7 +454,7 @@ prompt_hg() {  # [-] Mercurial
 				prompt_segment yellow black
 				status='±'
 			else # working copy is clean
-				prompt_segment green $CURRENT_FG
+				prompt_segment green black
 			fi
 			# $'\u263F' # ☿ # VCS_BOOKMARK_ICON
 			echo -n $(hg prompt "☿ {rev}@{branch}") $status
@@ -427,7 +469,7 @@ prompt_hg() {  # [-] Mercurial
 				prompt_segment yellow black
 				status='±'
 			else
-				prompt_segment green $CURRENT_FG
+				prompt_segment green black
 			fi
 			echo -n "☿ $rev@$branch $status"
 		fi
@@ -449,6 +491,7 @@ build_prompt() {
 	prompt_context
 	prompt_dir_lite
 	prompt_git
+	
 	prompt_end
 }
 
@@ -462,50 +505,62 @@ build_right_prompt() {
 # RPROMPT='%{'$'\e[1A''%}%{%f%b%k%}$(build_right_prompt)%{$reset_color%}%{'$'\e[1B''%}'
 
 
+: '
+isChanged :: MiniStatus -> Bool
+isChanged (MkMiniStatus index work) =
+		work == 'M' || (work == 'D' && index /= 'D')
 
-__git_eread() {
-	[[ -r "$1" ]] && read "$2" < "$1"
+isStaged :: MiniStatus -> Bool
+isStaged (MkMiniStatus index work) =
+		(index `elem` "MRC") || (index == 'D' && work /= 'D') || (index == 'A' && work /= 'A')
+
+isConflict :: MiniStatus -> Bool
+isConflict (MkMiniStatus index work) =
+		index == 'U' || work == 'U' || (index == 'A' && work == 'A') || (index == 'D' && work == 'D')
+
+isUntracked :: MiniStatus -> Bool
+isUntracked (MkMiniStatus index _) =
+		index == '?'
+
+'
+
+
+function build_prompt000 {
+    local prompt=""
+    
+    # Git info
+    local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
+    if [[ -n $current_commit_hash ]]; then local is_a_git_repo=true; fi
+    
+    if [[ $is_a_git_repo == true ]]; then
+        local current_branch=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
+        if [[ $current_branch == 'HEAD' ]]; then local detached=true; fi
+
+        local number_of_logs="$(git log --pretty=oneline -n1 2> /dev/null | wc -l)"
+        if [[ $number_of_logs -eq 0 ]]; then
+            local just_init=true
+        else
+            local git_status="$(git status --porcelain 2> /dev/null)"
+            
+            if [[ $git_status =~ ($'\n'|^).M ]]; then local has_modifications=true; fi
+            if [[ $git_status =~ ($'\n'|^)M ]]; then local has_modifications_cached=true; fi
+            if [[ $git_status =~ ($'\n'|^)A ]]; then local has_adds=true; fi
+            if [[ $git_status =~ ($'\n'|^).D ]]; then local has_deletions=true; fi
+            if [[ $git_status =~ ($'\n'|^)D ]]; then local has_deletions_cached=true; fi
+            if [[ $git_status =~ ($'\n'|^)[MAD] && ! $git_status =~ ($'\n'|^).[MAD\?] ]]; then local ready_to_commit=true; fi
+
+            local number_of_untracked_files=$(\grep -c "^??" <<< "${git_status}")
+            if [[ $number_of_untracked_files -gt 0 ]]; then local has_untracked_files=true; fi
+
+            if [[ $has_diverged == false && $commits_ahead -gt 0 ]]; then local should_push=true; fi
+        
+            local will_rebase=$(git config --get branch.${current_branch}.rebase 2> /dev/null)
+        
+            local number_of_stashes="$(git stash list -n1 2> /dev/null | wc -l)"
+            if [[ $number_of_stashes -gt 0 ]]; then local has_stashes=true; fi
+        fi
+    fi
+    
+    echo "$(custom_build_prompt ${enabled:-true} ${current_commit_hash:-""} ${is_a_git_repo:-false} ${current_branch:-""} ${detached:-false} ${just_init:-false} ${has_upstream:-false} ${has_modifications:-false} ${has_modifications_cached:-false} ${has_adds:-false} ${has_deletions:-false} ${has_deletions_cached:-false} ${has_untracked_files:-false} ${ready_to_commit:-false} ${tag_at_current_commit:-""} ${is_on_a_tag:-false} ${has_upstream:-false} ${commits_ahead:-false} ${commits_behind:-false} ${has_diverged:-false} ${should_push:-false} ${will_rebase:-false} ${has_stashes:-false} ${action})"
+    
 }
-
-# see if a cherry-pick or revert is in progress, if the user has committed a
-# conflict resolution with 'git commit' in the middle of a sequence of picks or
-# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
-__git_sequencer_status() {
-	local todo
-	if [[ -f "${repo_path}/CHERRY_PICK_HEAD" ]]; then
-		echo "|CHERRY-PICKING"
-	elif [[ -f "${repo_path}/REVERT_HEAD" ]]; then
-		echo "|REVERTING"
-	elif [[ -r "${repo_path}/sequencer/todo" ]] && read todo < "${repo_path}/sequencer/todo"; then
-		case "$todo" in
-			p[\ \	]|pick[\ \	]*)
-				echo "|CHERRY-PICKING" ;;
-			revert[\ \	]*)
-				echo "|REVERTING" ;;
-		esac
-	fi
-}
-local s
-if [[ -d "${repo_path}/rebase-merge" ]]; then
-	if [[ -f "${repo_path}/rebase-merge/interactive" ]]; then
-		echo ">R>|i"
-	else
-		echo ">R>"
-	fi
-elif [[ -d "${repo_path}/rebase-apply" ]]; then
-	if [[ -f "${repo_path}/rebase-apply/rebasing" ]]; then
-		echo ">R>"
-	elif [[ -f "${repo_path}/rebase-apply/applying" ]]; then
-		echo ">R>|AM"
-	else
-		echo ">R>|AM/REBASE"
-	fi
-elif [[ -f "${repo_path}/MERGE_HEAD" ]]; then
-	echo ">M<"
-elif s=$(__git_sequencer_status); then
-	echo "$s"
-elif [[ -f "${repo_path}/BISECT_LOG" ]]; then
-	echo "<B>"
-fi
-
-
