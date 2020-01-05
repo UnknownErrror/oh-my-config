@@ -297,22 +297,22 @@ prompt_git() { # Git: branch/detached head, dirty status
 			local porcelain=$(git status --porcelain 2> /dev/null)
 			
 			local num_untracked=$(echo $porcelain | grep -c "^??")
-			[[ $num_untracked -gt 0 ]] && echo " $num_untracked\u2026"
+			[[ $num_untracked -gt 0 ]] && echo -n " $num_untracked\u2026"
 
 			local num_added=$(echo $porcelain | grep -c "^A")
-			[[ $num_added -gt 0 ]] && echo " $num_added✚"
+			[[ $num_added -gt 0 ]] && echo -n " $num_added✚"
 
 			local modified num_modified=$(echo $porcelain | grep -c "^.M") num_cached_modified=$(echo $porcelain | grep -c "^M") num_cached_renamed=$(echo $porcelain | grep -c "^R")
 			[[ $num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
 			[[ $num_cached_modified -gt 0 || $num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
-			echo ${modified}
+			echo -n ${modified}
 
 			local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_cached_deleted=$(echo $porcelain | grep -c "^D")
 			[[ $num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
 			[[ $num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
-			echo ${deleted}
+			echo -n ${deleted}
 			
-			[[ $num_added -gt 0 || $num_cached_modified -gt 0 || $num_cached_deleted -gt 0 ]] && echo ' ⚑'
+			[[ $num_added -gt 0 || $num_cached_modified -gt 0 || $num_cached_deleted -gt 0 ]] && echo -n ' ⚑'
 		}
 		
 		if [[ ${SHOW_GIT_SEGMENT_REMOTE} != false && -n ${remote} ]]; then
