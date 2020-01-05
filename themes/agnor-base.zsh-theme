@@ -526,7 +526,7 @@ LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0
 		start_time=$SECONDS
 	}
 	prompt_agnor_precmd() {
-		local timer_result=$(($SECONDS-$start_time))
+		local timer_result=$(( SECONDS - start_time ))
 		if [[ $timer_result -ge 3600 ]]; then
 			local timer_hours remainder timer_minutes timer_seconds
 			let "timer_hours = $timer_result / 3600"
