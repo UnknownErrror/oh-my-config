@@ -16,6 +16,15 @@ prompt_aws() { # [-] AWS Profile: (Current AWS_PROFILE, yellow on red if product
 		esac
 	fi
 }
+prompt_aws() {
+	profile="default"
+	region=""
+	[[ -n $AWS_PROFILE ]] && profile=$AWS_PROFILE
+	[[ -n $AWS_REGION ]] && region=$AWS_REGION
+	text="$profile"
+	[[ -n $region ]] && text="$text [$region]"
+	prompt_segment magenta $PRIMARY_FG " $CLOUD $text "
+}
 
 prompt_tmux_context() { # [-] TMUX Context (tmux / tmux@<session_nsame>)
 	if [[ -n $TMUX ]]; then

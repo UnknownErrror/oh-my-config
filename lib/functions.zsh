@@ -6,6 +6,20 @@ function async_run() {
 	}&
 }
 
+function color256() {
+	local red=$1; shift
+	local green=$2; shift
+	local blue=$3; shift
+	echo -n $[$red * 36 + $green * 6 + $blue + 16]
+}
+function fg256() {
+	echo -n $'\e[38;5;'$(color256 "$@")"m"
+}
+function bg256() {
+	echo -n $'\e[48;5;'$(color256 "$@")"m"
+}
+
+
 function repeat0() { # repeat <count> <command>
 	local i max
 	max=$1; shift;

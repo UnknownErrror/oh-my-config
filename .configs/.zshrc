@@ -8,7 +8,10 @@ export TERM="xterm-256color"
 export EDITOR=micro
 export ZSH="$HOME/.oh-my-config" # [REQ]
 export SD="/sdcard"
-# [[ -n $TMUX_PATH ]] && export HOME='/home/unkerr'
+
+
+LSCOLORS="cxFxgxhxbxeadaabagDdad" # BSD
+LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0;41:sg=0;46:tw=1;33;43:ow=0;43:" # Linux
 
 
 CASE_SENSITIVE=false # Use case-sensitive completion
@@ -164,3 +167,16 @@ add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
 
 
+function preexec() {
+  timer=$(($(date +%s%0N)/1000000))
+}
+
+function precmd() {
+  if [ $timer ]; then
+    now=$(($(date +%s%0N)/1000000))
+    elapsed=$(($now-$timer))
+
+    export RPROMPT="%F{cyan}${elapsed}ms %{$reset_color%}"
+    unset timer
+  fi
+}

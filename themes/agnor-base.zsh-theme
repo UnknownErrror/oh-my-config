@@ -479,91 +479,18 @@ TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes
 
 
 
-POWERLINE_A_COLOR="6" # normal cyan
-POWERLINE_B_COLOR='12' # bright blue
-POWERLINE_C_COLOR="4" # normal blue
 
 
 
-LSCOLORS="cxFxgxhxbxeadaabagDdad" # BSD
-LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0;41:sg=0;46:tw=1;33;43:ow=0;43:" # Linux
 
 
 
-function color256() {
-	local red=$1; shift
-	local green=$2; shift
-	local blue=$3; shift
-	echo -n $[$red * 36 + $green * 6 + $blue + 16]
-}
-function fg256() {
-	echo -n $'\e[38;5;'$(color256 "$@")"m"
-}
-function bg256() {
-	echo -n $'\e[48;5;'$(color256 "$@")"m"
-}
 
-
-(){ # Setup
-	setopt PROMPT_SUBST
-	
-	
-	autoload -Uz add-zsh-hook
-	local start_time=$SECONDS
-	prompt_agnor_preexec() {
-		start_time=$SECONDS
-	}
-	prompt_agnor_precmd() {
-		local timer_result=$(( SECONDS - start_time ))
-		if [[ $timer_result -ge 3600 ]]; then
-			local timer_hours remainder timer_minutes timer_seconds
-			let "timer_hours = $timer_result / 3600"
-			let "remainder = $timer_result % 3600"
-			let "timer_minutes = $remainder / 60"
-			let "timer_seconds = $remainder % 60"
-			print -P "%B%F{red}>>> elapsed time ${timer_hours}h${timer_minutes}m${timer_seconds}s%b"
-		elif [[ $timer_result -ge 60 ]]; then
-			local timer_minutes timer_seconds
-			let "timer_minutes = $timer_result / 60"
-			let "timer_seconds = $timer_result % 60"
-			print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m${timer_seconds}s%b"
-		elif [[ $timer_result -gt 10 ]]; then
-			print -P "%B%F{green}>>> elapsed time ${timer_result}s%b"
-		fi
-		start_time=$SECONDS
-		# vcs_info
-	}
-	
-	add-zsh-hook preexec prompt_agnor_preexec
-	add-zsh-hook precmd prompt_agnor_precmd
-}
-
-
-: "
-isChanged :: MiniStatus -> Bool
-isChanged (MkMiniStatus index work) =
-		work == 'M' || (work == 'D' && index /= 'D')
-
-isStaged :: MiniStatus -> Bool
-isStaged (MkMiniStatus index work) =
-		(index `elem` \"MRC\") || (index == 'D' && work /= 'D') || (index == 'A' && work /= 'A')
-
-isConflict :: MiniStatus -> Bool
-isConflict (MkMiniStatus index work) =
-		index == 'U' || work == 'U' || (index == 'A' && work == 'A') || (index == 'D' && work == 'D')
-
-isUntracked :: MiniStatus -> Bool
-isUntracked (MkMiniStatus index _) =
-		index == '?'
-"
-
-
-
-prompt_bureau_setup () {
+prompt_bureau_setup() {
 	add-zsh-hook precmd prompt_bureau_precmd
 	add-zsh-hook zshexit prompt_bureau_exit
 }
-prompt_bureau_prompt () {
+prompt_bureau_prompt() {
 	local color=green
 	if [ "$UID" = "0" ]; then color=red; fi
 	echo "> %{$fg[${color}]%}%(!.#.$)%{$reset_color%} "
@@ -572,7 +499,7 @@ prompt_bureau_rprompt_file() {
 	echo "/tmp/$(whoami)_zsh_rprompt.$$"
 }
 BUREAU_ASYNC_PROC=0
-prompt_bureau_precmd () {
+prompt_bureau_precmd() {
 	# kill child if necessary
 	if [[ "${BUREAU_ASYNC_PROC}" != 0 ]]; then
 		kill -s HUP $BUREAU_ASYNC_PROC >/dev/null 2>&1 || :
@@ -590,7 +517,7 @@ prompt_bureau_vcs_prompt() {
 prompt_bureau_exit() {
 	rm -f "$(prompt_bureau_rprompt_file)" 2> /dev/null
 }
-TRAPUSR1() {
+TRAPUSR1____________() {
 	RPROMPT="$(cat $(prompt_bureau_rprompt_file))" # read from temp file
 	BUREAU_ASYNC_PROC=0 # reset proc number
 	zle && zle reset-prompt # reload
@@ -619,31 +546,3 @@ _agkozak_branch_status() {
 	fi
 }
 
-function build_prompt000() {
-	local prompt=""
-	
-	# Git info
-	local current_commit_hash=$(git rev-parse HEAD 2> /dev/null)
-	if [[ -n $current_commit_hash ]]; then local is_a_git_repo=true; fi
-	
-	if [[ $is_a_git_repo == true ]]; then
-		local current_branch=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
-		if [[ $current_branch == 'HEAD' ]]; then local detached=true; fi
-
-		local number_of_logs="$(git log --pretty=oneline -n1 2> /dev/null | wc -l)"
-		if [[ $number_of_logs -eq 0 ]]; then
-			local just_init=true
-		else
-			local porcelain="$(git status --porcelain 2> /dev/null)"
-			
-			if [[ $porcelain =~ ($'\n'|^).M ]]; then local has_modifications=true; fi
-			if [[ $porcelain =~ ($'\n'|^)M ]]; then local has_modifications_cached=true; fi
-			if [[ $porcelain =~ ($'\n'|^)A ]]; then local has_adds=true; fi
-			if [[ $porcelain =~ ($'\n'|^).D ]]; then local has_deletions=true; fi
-			if [[ $porcelain =~ ($'\n'|^)D ]]; then local has_deletions_cached=true; fi
-			if [[ $porcelain =~ ($'\n'|^)[MAD] && ! $porcelain =~ ($'\n'|^).[MAD\?] ]]; then local ready_to_commit=true; fi
-
-			local will_rebase=$(git config --get branch.${current_branch}.rebase 2> /dev/null)
-		fi
-	fi
-}
