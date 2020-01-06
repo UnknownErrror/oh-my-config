@@ -1,10 +1,10 @@
 () {
 	FONT_MODE=${FONT_MODE:-pwl} # Default: powerline
-	local -AH icons
+	typeset -gAH agnor_icons
 	local LC_ALL='' LC_CTYPE='en_US.UTF-8' # Set the right locale to protect special characters
 	case $FONT_MODE in
 		nerdfont*|nf*) # nerd-font patched font required! See https://github.com/ryanoasis/nerd-fonts
-			icons=(
+			agnor_icons=(
 				LEFT_SEGMENT_SEPARATOR         $'\uE0B0' # 
 				RIGHT_SEGMENT_SEPARATOR        $'\uE0B2' # 
 				LEFT_SEGMENT_END_SEPARATOR     ' '       # Whitespace
@@ -81,7 +81,7 @@
 				GCLOUD_ICON                    $'\uF7B7' # 
 			) ;;
 		*) # Powerline-patched font required! See https://github.com/Lokaltog/powerline-fonts
-			icons=(
+			agnor_icons=(
 				LEFT_SEGMENT_SEPARATOR         $'\uE0B0' # 
 				RIGHT_SEGMENT_SEPARATOR        $'\uE0B2' # 
 				LEFT_SEGMENT_END_SEPARATOR     ' '       # Whitespace
@@ -158,6 +158,6 @@
 			) ;;
 	esac
 	function print_icon() { # print_icon <icon_name>
-		echo -n "${icons[$1]}"
+		echo -n "${agnor_icons[$1]}"
 	}
 }
