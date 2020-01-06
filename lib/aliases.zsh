@@ -62,9 +62,12 @@ alias -g EXPR=" && echo 1 || echo 0"
 
 
 alias b64e='base64'
-alias b64e='base64 --decode'
+alias b64d='base64 --decode'
 alias path='print -l $path'
+
 alias sd='cd /sdcard/'
 alias home='cd $HOME/'
+alias omzsh='cd $ZSH/'
+
 alias ffix='~/tmux ffix'
 alias tupd='~/tmux upd'

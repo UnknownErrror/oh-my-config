@@ -6,6 +6,16 @@ function async_run() {
 	}&
 }
 
+function is_bool_true() {
+	[[ $1 == true || $1 == 1 || $1 =~ ^[Yy].* ]] && return 0 || return 1
+}
+function is_bool_false() {
+	[[ $1 == false || $1 == 0 || $1 =~ ^[Nn].* ]] && return 0 || return 1
+}
+function is_bool_indeterminate() {
+	! is_true $1 && ! is_false $1 && return 0 || return 1
+}
+
 function color256() {
 	local red=$1; shift
 	local green=$2; shift

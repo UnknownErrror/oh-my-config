@@ -1,4 +1,15 @@
-source $ZSH/themes/agnor-icons.zsh
+source ${0%/*}/agnor-icons.zsh
+
+######################################
+### Utilities ###
+
+# Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
+function agnor_parse_git_dirty() { # Checks if working tree is dirty
+	local -a FLAGS=('--porcelain')
+	[[ AGNOR_DISABLE_UNTRACKED_FILES_DIRTY == true ]] && FLAGS+='--untracked-files=no'
+	[[ AGNOR_GIT_STATUS_IGNORE_SUBMODULES != "git" ]] && FLAGS+="--ignore-submodules=${AGNOR_GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
+	[[ -n $(git status ${FLAGS} 2>/dev/null | tail -n1) ]] && echo '*'
+}
 
 ######################################
 ### Segment drawing ###
@@ -9,8 +20,6 @@ CURRENT_RIGHT_BG='NONE'
 
 # Special Powerline characters # Do not change this!
 SEGMENT_SEPARATOR=$'\ue0b0'
-RIGHT_SEGMENT_SEPARATOR=$'\ue0b2'
-
 prompt_segment() { # prompt_segment bg fg segment
 	local bg fg
 	[[ -n $1 ]] && bg="%K{$1}" || bg="%k"
@@ -33,25 +42,6 @@ prompt_end() {
 	CURRENT_BG='NONE'
 }
 
-prompt_right_segment() { # prompt_right_segment bg fg segment
-	local bg fg
-	[[ -n $1 ]] && bg="%K{$1}" || bg="%k"
-	[[ -n $2 ]] && fg="%F{$2}" || fg="%f"
-	
-	# [[ $CURRENT_RIGHT_BG == "NONE" ]] && echo -n "%F{$1}$RIGHT_SEGMENT_SEPARATOR" || echo -n "%F{$1}$RIGHT_SEGMENT_SEPARATOR"
-	echo -n "%F{$1}$RIGHT_SEGMENT_SEPARATOR"
-	echo -n "%{$bg%}%{$fg%}"
-	[[ $CURRENT_RIGHT_BG != "NONE" ]] && echo -n " "
-	
-	CURRENT_RIGHT_BG=$1
-	[[ -n $3 ]] && echo -n "$3 "
-}
-prompt_right_end() {
-	#echo -n "%{%f%}"
-	echo -n "%{%k%}"
-	CURRENT_RIGHT_BG='NONE'
-}
-
 
 ######################################
 ### Prompt components ###
@@ -60,35 +50,35 @@ prompt_right_end() {
 
 function normalize_exit_status() {
 	local RETVAL=$1
-	if (( $RETVAL <= 128 )); then
-		echo "$RETVAL"
+	if (( RETVAL <= 128 )); then
+		echo "${RETVAL}"
 	else
-		local sig=$(( $RETVAL - 128 ))
+		local sig=$(( RETVAL - 128 ))
 		local idx=$(( sig + 1 ))
 		echo "SIG${signals[$idx]}(${sig})"
 	fi
 }
 prompt_retval_status() { # Return Value: (✘ <codes> / ✘ <code> / ✘ SIG<sig>(<code>) / ✔)
-	local result code_sum code
+	local code_sum code
 	if (( $#RETVALS > 1 )); then
-		code_sum=${RETVALS[1]}
+		code_sum="${RETVALS[1]}"
 	else
-		code_sum=${RETVAL}
+		code_sum="${RETVAL}"
 	fi
-	result=$(normalize_exit_status "${code_sum}")
+	local result=$(normalize_exit_status "${code_sum}")
 	for code in "${(@)RETVALS[2,-1]}"; do
 		result="${result}|$(normalize_exit_status "$code")"
-		code_sum=$(( $code_sum + $code ))
+		code_sum=$(( code_sum + code ))
 	done
 	
 	local pre_result=$(echo $result | sed -r 's/^0\|0\|(0\|)+/..0|/')
 	if [[ pre_result == result ]]; then
 		pre_result=$(echo $result | sed -r 's/(\|0)+\|0\|0$/|0../')
 	fi
-	result=${pre_result}
+	result="${pre_result}"
 
 	if (( code_sum > 0 )); then
-		prompt_segment red white "$(print_icon FAIL_ICON) $result"
+		prompt_segment red white "$(print_icon FAIL_ICON) ${result}"
 	else
 		prompt_segment green white "$(print_icon OK_ICON)"
 	fi
@@ -101,10 +91,11 @@ prompt_retval_status_lite() { # Return Value (Lite): (✘ <code> / ✘ SIG<sig>(
 	fi
 }
 
+
 prompt_root_status() { # Status of root: (⚡ / )
 	if [[ ${(%):-%#} == '#' ]]; then
 		prompt_segment black yellow "$(print_icon ROOT_ICON)"
-	elif [[ -n "$SUDO_COMMAND" ]]; then
+	elif [[ -n $SUDO_COMMAND ]]; then
 		prompt_segment black yellow "$(print_icon SUDO_ICON)"
 	fi
 }
@@ -112,35 +103,35 @@ prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
 	local jobs_count="${$(jobs -l | wc -l)// /}"
 	local wrong_lines="$(jobs -l | awk '/pwd now/{ count++ } END {print count}')"
 	if [[ wrong_lines -gt 0 ]]; then
-		jobs_count=$(( $jobs_count - $wrong_lines ))
+		jobs_count=$(( jobs_count - wrong_lines ))
 	fi
-	if [[ jobs_count -gt 0 ]]; then # default cyan
+	if [[ jobs_count -gt 0 ]]; then
 		local icon="$(print_icon BACKGROUND_JOBS_ICON)"
-		if [[ "$jobs_count" -gt 1 ]]; then
-			prompt_segment cyan white "$icon $jobs_count"
+		if [[ jobs_count -gt 1 ]]; then
+			prompt_segment cyan white "${icon} ${jobs_count}"
 		else
-			prompt_segment cyan white "$icon"
+			prompt_segment cyan white "${icon}"
 		fi
 	fi
 }
 
 prompt_context() { # Context: ((ssh) <user>@<hostname> / (screen) <user>@<hostname> / (tmux) <user>@<hostname> / <user>@<hostname>)
 	local shell_deep=${(%):-%L}
-	[[ shell_deep -gt 1 ]] && prompt_segment black default "$shell_deep"
+	[[ shell_deep -gt 1 ]] && prompt_segment black default "${shell_deep}"
 	
 	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
-		prompt_segment black yellow "(ssh) %(!..%{%F{default}%})$USER@%m" # "$(print_icon SSH_ICON)"
+		prompt_segment black yellow "(ssh) %(!..%{%F{default}%})${USER}@%m"
 	elif [[ -n $STY ]]; then
-		prompt_segment black default "(screen) %(!.%{%F{yellow}%}.)$USER@%m"
+		prompt_segment black default "(screen) %(!.%{%F{yellow}%}.)${USER}@%m"
 	elif [[ -n $TMUX ]]; then
 		local session_name="$(tmux display-message -p '#S')"
 		if [[ -n $session_name ]]; then
-			prompt_segment black magenta "(tmux@$session_name) %(!.%{%F{yellow}%}.%{%F{default}%})$USER@%m"
+			prompt_segment black magenta "(tmux@${session_name}) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
 		else
-			prompt_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})$USER@%m"
+			prompt_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
 		fi
 	elif [[ $USER != $DEFAULT_USER ]]; then
-		prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m"
+		prompt_segment black default "%(!.%{%F{yellow}%}.)${USER}@%m"
 	fi
 }
 
@@ -160,14 +151,14 @@ prompt_dir() { # Dir: ( / WO) + (PWD)
 		icon="$(print_icon LOCK_ICON) "
 	fi
 	
-	prompt_segment blue default "$icon%~"
+	prompt_segment blue default "${icon}%~"
 }
 prompt_dir_lite() { # Dir (Lite): () + (PWD)
 	local icon
 	if [[ ! -w "$PWD" ]]; then
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	prompt_segment blue default "$icon%~"
+	prompt_segment blue default "${icon}%~"
 }
 prompt_dir_simple() { # Dir (Simple): (PWD)
 	prompt_segment blue default "%~"
@@ -180,43 +171,17 @@ prompt_date() { # System date
 	prompt_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
 
-# Configurable: DISABLE_UNTRACKED_FILES_DIRTY, GIT_STATUS_IGNORE_SUBMODULES
-function agnor_parse_git_dirty() { # Checks if working tree is dirty
-	local -a FLAGS=('--porcelain')
-	[[ ${DISABLE_UNTRACKED_FILES_DIRTY} == true ]] && FLAGS+='--untracked-files=no'
-	[[ ${GIT_STATUS_IGNORE_SUBMODULES} != "git" ]] && FLAGS+="--ignore-submodules=${GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
-	[[ -n $(git status ${FLAGS} 2>/dev/null | tail -n1) ]] && echo '*'
-}
 
-prompt_git() { # «»±˖˗‑‐‒ ━ ✚‐↔←↑↓→↭⇎⇔⋆━◂▸◄►◆☀★☗☊✔✖❮❯⚑⚙
-	local modified untracked added deleted
-
-	if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
-		
-		## ±	added files from the modifies or delete ones preceeded by their number
-		
-		#  origin ^ master <B> ·↑12 ·↓2 ✔ ☗tag 2⚙ 12… 3●1± 3‒1± 12✚ ⚑
-		#           master                        12… 3●1± 3‒1± 12✚
-		#           master                        12… 3•1± 3‒1± 12✚
-		
-		# |> +2
-		#  master ☗ tag ↑12 ✔ <B>      |>      ● ✚      |>      origin ↓2
-		
-		print -n "${ref/refs\/heads\//$PL_BRANCH_CHAR}$untracked$modified$deleted$added"
-	fi
-}
-
-
-(( $+parameters[SHOW_GIT_SEGMENT_REMOTE] )) || SHOW_GIT_SEGMENT_REMOTE=true # default value
-(( $+parameters[SHOW_GIT_SEGMENT_STASH] ))  || SHOW_GIT_SEGMENT_STASH=true # default value
+(( $+parameters[AGNOR_GIT_SHOW_SEGMENT_REMOTE] )) || AGNOR_GIT_SHOW_SEGMENT_REMOTE=true
+(( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		
-		if [[ $SHOW_GIT_SEGMENT_STASH != false ]]; then
-			local stashes=$(git stash list | wc -l)
-			# local stashes=$(git stash list -n1 | wc -l)
+		if [[ AGNOR_GIT_SHOW_SEGMENT_STASH != false ]]; then
+			# local stashes=$(git stash list | wc -l)
+			local stashes=$(git stash list -n1 | wc -l)
 			if [[ stashes -ne 0 ]]; then
 				prompt_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
 			fi
@@ -239,9 +204,9 @@ prompt_git() { # Git: branch/detached head, dirty status
 			behind=$(git rev-list HEAD..@{upstream} 2>/dev/null | wc -l)
 		fi
 		
-		if [[ $behind -ne 0 ]] && [[ $ahead -ne 0 ]]; then # [EXPERIMENT]
+		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then # [EXPERIMENT]
 			prompt_segment red white # diverged state
-		elif [[ ${SHOW_GIT_SEGMENT_REMOTE} == false && $behind -ne 0 ]]; then
+		elif [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]]; then
 			prompt_segment magenta white # merge/rebase is needed
 		elif [[ -n $dirty ]]; then
 			prompt_segment yellow black
@@ -254,8 +219,8 @@ prompt_git() { # Git: branch/detached head, dirty status
 		local tag=$(git describe --exact-match --tags 2> /dev/null)
 		[[ -n $tag ]] && echo -n " ☗ ${tag}"
 		
-		[[ $ahead -ne "0" ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		[[ ${SHOW_GIT_SEGMENT_REMOTE} == false && $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		[[ ahead -ne 0 ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
+		[[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		
 		[[ ! -n $dirty ]] && echo -n " $(print_icon OK_ICON)" # ✔
 		
@@ -297,25 +262,25 @@ prompt_git() { # Git: branch/detached head, dirty status
 			local porcelain=$(git status --porcelain 2> /dev/null)
 			
 			local num_untracked=$(echo $porcelain | grep -c "^??")
-			[[ $num_untracked -gt 0 ]] && echo -n " $num_untracked\u2026"
+			[[ num_untracked -gt 0 ]] && echo -n " $num_untracked\u2026"
 
 			local num_added=$(echo $porcelain | grep -c "^A")
-			[[ $num_added -gt 0 ]] && echo -n " $num_added✚"
+			[[ num_added -gt 0 ]] && echo -n " $num_added✚"
 
 			local modified num_modified=$(echo $porcelain | grep -c "^.M") num_cached_modified=$(echo $porcelain | grep -c "^M") num_cached_renamed=$(echo $porcelain | grep -c "^R")
-			[[ $num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
-			[[ $num_cached_modified -gt 0 || $num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
+			[[ num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
+			[[ num_cached_modified -gt 0 || num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
 			echo -n ${modified}
 
 			local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_cached_deleted=$(echo $porcelain | grep -c "^D")
-			[[ $num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
-			[[ $num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
+			[[ num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
+			[[ num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
 			echo -n ${deleted}
 			
-			[[ $num_added -gt 0 || $num_cached_modified -gt 0 || $num_cached_deleted -gt 0 ]] && echo -n ' ⚑'
+			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_deleted -gt 0 ]] && echo -n ' ⚑'
 		}
 		
-		if [[ ${SHOW_GIT_SEGMENT_REMOTE} != false && -n ${remote} ]]; then
+		if [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
 				prompt_segment magenta white # merge/rebase is needed
 			else
@@ -332,7 +297,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 			prompt_segment cyan black "GIT_DIR!"
 		fi
 	fi
-}
+} #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
 
 prompt_git_remotes() {
 	eval "remotes=(`git remote | sed 's/\n/ /'`)"
@@ -341,33 +306,24 @@ prompt_git_remotes() {
 	done
 }
 prompt_git_remote() {
-	local fg
-	local current_branch
-	local remote
-	local ahead behind
 	local remote_status
 	local remote=${1:-"origin"}
-
-	fg=black
-
-	current_branch=${$(git rev-parse --abbrev-ref HEAD)}
-	remote_path=${$(git rev-parse --verify remotes\/${remote}\/${current_branch} --symbolic-full-name 2> /dev/null)}
+	local fg=black
+	local current_branch=${$(git rev-parse --abbrev-ref HEAD)}
+	local remote_path=${$(git rev-parse --verify remotes\/${remote}\/${current_branch} --symbolic-full-name 2> /dev/null)}
 
 	if [[ -n ${remote_path} ]] ; then
-		ahead=$(git rev-list ${remote_path}..HEAD 2> /dev/null | wc -l | tr -d ' ')
-		behind=$(git rev-list HEAD..${remote_path} 2> /dev/null | wc -l | tr -d ' ')
+		local ahead=$(git rev-list ${remote_path}..HEAD 2> /dev/null | wc -l | tr -d ' ')
+		local behind=$(git rev-list HEAD..${remote_path} 2> /dev/null | wc -l | tr -d ' ')
 
-		if [[ $ahead -eq 0 && $behind -eq 0 ]] ; then
+		if [[ ahead -eq 0 && behind -eq 0 ]] ; then
 			remote_status="○ "
 		else
-			if [[ $ahead -gt 0 ]] ; then
+			if [[ behind -gt 0 ]] ; then
+				fg=red
+			elif [[ ahead -gt 0 ]] ; then
 				fg=yellow
 			fi
-
-			if [[ $behind -gt 0 ]] ; then
-				fg=red
-			fi
-
 			remote_status="+${ahead} -${behind}"
 		fi
 	else
@@ -387,7 +343,6 @@ prompt_git_remote() {
 # - <B> - Bisect state on the current branch
 # - >M< - Merge state on the current branch
 # - >R> - Rebase state on the current branch
-
 
 prompt_bzr() { # [-] Bzr
 	(( $+commands[bzr] )) || return
@@ -438,13 +393,15 @@ prompt_hg() {  # [-] Mercurial
 	fi
 }
 
+
 prompt_newline() {
 	prompt_end
 	echo
 }
-prompt_end_chars() { # Prompt ending characters ($ / #) ❯
+prompt_shell_chars() { # ($ / #) ❯
 	echo -n " %(!.#.$) ❯"
 }
+
 
 build_prompt() {
 	RETVAL=$?
@@ -456,29 +413,47 @@ build_prompt() {
 	prompt_git
 	prompt_end
 	
-	# if [[ $(tput cols) -ge ${TRIGGER_WIDTH:-100} ]]; then
-		# pass
-	# fi
-	
-	prompt_end_chars
+	prompt_shell_chars
 }
-
 PROMPT='%{%f%b%k%}$(build_prompt) '
 
-build_right_prompt() {
-	prompt_date
-	prompt_time
-	prompt_right_end
+
+
+
+(( $+parameters[AGNOR_DISABLE_EXTRA_SETUP] )) || AGNOR_DISABLE_EXTRA_SETUP=false
+[[ AGNOR_DISABLE_EXTRA_SETUP != true ]] && (){ # Extra setup
+	autoload -Uz add-zsh-hook
+	
+	local start_time=$SECONDS
+	function agnor_hook_preexec() {
+		start_time=$SECONDS
+	}
+	function agnor_hook_precmd() {
+		if [[ start_time -ne 0 ]]; then
+			local elapsed_time=$(( SECONDS - start_time ))
+			if [[ elapsed_time -ge 3600 ]]; then
+				local timer_hours=$(( elapsed_time / 3600 ))
+				local remainder=$(( elapsed_time % 3600 ))
+				local timer_minutes=$(( remainder / 60 ))
+				local timer_seconds=$(( remainder % 60 ))
+				print -P "%B%F{red}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%b"
+			elif [[ elapsed_time -ge 60 ]]; then
+				local timer_minutes=$(( elapsed_time / 60 ))
+				local timer_seconds=$(( elapsed_time % 60 ))
+				print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%b"
+			elif [[ elapsed_time -gt 10 ]]; then
+				print -P "%B%F{green}>>> elapsed time ${elapsed_time}s%b"
+			fi
+			start_time=0
+		fi
+	}
+	add-zsh-hook preexec agnor_hook_preexec
+	add-zsh-hook precmd agnor_hook_precmd
+	
+	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
+		zle && { zle reset-prompt; zle -R }
+	}
 }
-# RPROMPT='%{$reset_color%}%{'$'\e[1A''%}%{%f%b%k%}$(build_right_prompt)%{$reset_color%}%{'$'\e[1B''%}'
-
-
-TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
-	zle && { zle reset-prompt; zle -R }
-}
-
-
-
 
 
 

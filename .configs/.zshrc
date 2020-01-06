@@ -19,29 +19,19 @@ HYPHEN_INSENSITIVE=false # Use hyphen-insensitive completion; Case-sensitive com
 # DISABLE_MAGIC_FUNCTIONS=true # Uncomment if pasting URLs and other text is messed up.
 ENABLE_CORRECTION=true # Enable command auto-correction
 COMPLETION_WAITING_DOTS=true # Display red dots whilst waiting for completion
-# DISABLE_UNTRACKED_FILES_DIRTY=true # Disable marking untracked files under VCS as dirty. This makes repository status check for large repositories muuuch faster
-# ZSH_AUTOSUGGEST_STRATEGY=( completion history ) # [HARD]
 DISABLE_AUTO_TITLE=false
 DISABLE_LS_COLORS=false
 ZSH_THEME="custom"
 
 plugins=(
-	# git
-	# zsh-syntax-highlighting
-	fast-syntax-highlighting
+	gitfast # git
+	fast-syntax-highlighting # zsh-syntax-highlighting
 	zsh-autosuggestions
 	zsh-completions
-	extract
-	last-working-dir
-
-	adb
-	pip
-	gem
-	node
-	colored-man-pages
-	jump
-	gitfast
-	themes
+	
+	extract last-working-dir colored-man-pages jump
+	
+	adb pip gem
 )
 source $ZSH/zsh-init.zsh # [REQ]
 
@@ -166,17 +156,4 @@ autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
 
-
-function preexec() {
-  timer=$(($(date +%s%0N)/1000000))
-}
-
-function precmd() {
-  if [ $timer ]; then
-    now=$(($(date +%s%0N)/1000000))
-    elapsed=$(($now-$timer))
-
-    export RPROMPT="%F{cyan}${elapsed}ms %{$reset_color%}"
-    unset timer
-  fi
-}
+git config credential.helper 'cache --timeout=604800'

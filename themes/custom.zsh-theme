@@ -1,5 +1,5 @@
 FONT_MODE=nf
-source $ZSH/themes/agnor-base.zsh-theme
+source ${0%/*}/agnor-base.zsh-theme
 
 function all_lines() {
 	echo "$1" | grep -v "^$" | wc -l
@@ -8,16 +8,20 @@ function count_lines() {
 	echo "$1" | egrep -c "^$2"
 }
 git_details() {
+	: --deleted         show deleted files in the output
+	: --modified        show modified files in the output
+	: --others          show other files in the output
+	: --killed ?        show files on the filesystem that need to be removed
+	: --unmerged        show unmerged files in the output
+
+	gitstatus=`git diff --name-status 2>&1`
+	staged_files=`git diff --staged --name-status`
+	
 	num_changed=$(( $( all_lines "$gitstatus" ) - $( count_lines "$gitstatus" U ) ))
 	num_conflicts=$( count_lines "$staged_files" U )
 	num_staged=$(( $( all_lines "$staged_files" ) - num_conflicts ))
 	num_untracked=$( git ls-files --others --exclude-standard $(git rev-parse --show-cdup) | wc -l )
-
-
-
-
-	gitstatus=`git diff --name-status 2>&1`
-	staged_files=`git diff --staged --name-status`
+	
 	
 	staged=$(( `all_lines "$staged_files"` - num_conflicts ))
 	if [[ $staged -ne "0" ]]; then
@@ -50,8 +54,8 @@ git_details() {
 		status="${line:0:2}"
 		while [[ -n ${status} ]]; do
 			case "${status}" in
-				#two fixed character matches, loop finished
-				\#\#) branch_line="${line/\.\.\./^}"; break ;;
+				# two fixed character matches, loop finished
+				\#\#) break ;;
 				\?\?) ((num_untracked++)); break ;;
 				U?) ((num_conflicts++)); break ;;
 				?U) ((num_conflicts++)); break ;;
@@ -105,15 +109,12 @@ export default (output) => {
 : '
 func parseLine(line string) {
 	switch line[:2] {
-
 	// match branch and origin
 	case "##":
 		parseBranchinfo(line)
-
 	// untracked files
 	case "??":
 		Git.untracked++
-
 	case "MM":
 		fallthrough
 	case "AM":
@@ -125,7 +126,7 @@ func parseLine(line string) {
 	case " M":
 		Git.modified++
 		Git.dirty++
-
+		
 	case "MD":
 		fallthrough
 	case "AD":
@@ -137,7 +138,7 @@ func parseLine(line string) {
 	case " D":
 		Git.deleted++
 		Git.dirty++
-
+		
 	// changes in the index
 	case "M ":
 		Git.modified++
@@ -149,7 +150,7 @@ func parseLine(line string) {
 		Git.renamed++
 	case "C ":
 		Git.copied++
-
+		
 	case "DD":
 		fallthrough
 	case "AU":
@@ -169,10 +170,6 @@ func parseLine(line string) {
 '
 
 : "
-isChanged :: MiniStatus -> Bool
-isChanged (MkMiniStatus index work) =
-		work == 'M' || (work == 'D' && index /= 'D')
-
 isStaged :: MiniStatus -> Bool
 isStaged (MkMiniStatus index work) =
 		(index `elem` \"MRC\") || (index == 'D' && work /= 'D') || (index == 'A' && work /= 'A')
@@ -180,10 +177,6 @@ isStaged (MkMiniStatus index work) =
 isConflict :: MiniStatus -> Bool
 isConflict (MkMiniStatus index work) =
 		index == 'U' || work == 'U' || (index == 'A' && work == 'A') || (index == 'D' && work == 'D')
-
-isUntracked :: MiniStatus -> Bool
-isUntracked (MkMiniStatus index _) =
-		index == '?'
 "
 function build_prompt000() {
 	local prompt=""
@@ -232,5 +225,5 @@ build_prompt() {
 	# prompt_hg
 	prompt_newline
 	
-	prompt_end_chars
+	prompt_shell_chars
 }

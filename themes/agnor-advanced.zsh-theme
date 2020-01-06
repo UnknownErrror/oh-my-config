@@ -1,4 +1,4 @@
-source $ZSH/themes/base.zsh-theme
+source ${0%/*}/base.zsh-theme
 
 prompt_virtualenv() { # [-] Virtualenv: (<VIRTUAL_ENV>)
 	local virtualenv_path="$VIRTUAL_ENV"

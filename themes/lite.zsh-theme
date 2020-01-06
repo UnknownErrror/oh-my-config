@@ -1,4 +1,4 @@
-source $ZSH/themes/base.zsh-theme
+source ${0%/*}/base.zsh-theme
 
 build_prompt() {
 	RETVAL=$?
@@ -7,8 +7,7 @@ build_prompt() {
 	prompt_root_status
 	prompt_jobs_status
 	prompt_context
-	prompt_dir
-	prompt_dir_rw_status_lite
+	prompt_dir_lite
 	prompt_git
 	prompt_end
 	
