@@ -1,4 +1,40 @@
 source ${0%/*}/base.zsh-theme
+# el1t/statusline
+
+setopt transient_rprompt
+
+CURRENT_RIGHT_BG='NONE'
+SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
+
+prompt_segment_right() {
+	local bg fg
+	[[ -n $1 ]] && bg="%K{$1}" || bg="%k"
+	[[ -n $2 ]] && fg="%F{$2}" || fg="%f"
+	
+	echo -n "%K{$CURRENT_RIGHT_BG}%F{$1}$SEGMENT_SEPARATOR_RIGHT%{$bg%}%{$fg%} "
+	CURRENT_RIGHT_BG=$1
+	[[ -n $3 ]] && echo -n $3
+}
+
+prompt_vi() {
+	if [[ -n $N_MODE || -n $MODE_INDICATOR ]] && [[ $SP_DISABLE_VI_INDICATOR != true ]]; then
+		N_MODE="[N] "
+		I_MODE="[I] "
+		prompt_segment_right 246 black "`vi_mode_prompt_info`"
+	fi
+}
+
+
+build_rprompt() {
+	prompt_vi
+	prompt_time
+}
+
+# RPROMPT='%{%f%b%k%}$(build_rprompt)'
+
+
+
+
 
 prompt_virtualenv() { # [-] Virtualenv: (<VIRTUAL_ENV>)
 	local virtualenv_path="$VIRTUAL_ENV"

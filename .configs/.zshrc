@@ -28,6 +28,7 @@ plugins=(
 	fast-syntax-highlighting # zsh-syntax-highlighting
 	zsh-autosuggestions
 	zsh-completions
+	# trapd00r/zsh-syntax-highlighting-filetypes
 	
 	extract last-working-dir colored-man-pages jump
 	
@@ -156,4 +157,18 @@ autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
 
-git config credential.helper 'cache --timeout=604800'
+#eval $(dircolors -b $ZSH/.configs/LS_COLORS)
+
+
+
+
+# coloring in less, for manpages
+#export LESS_TERMCAP_mb=$'\E[01;31m'
+#export LESS_TERMCAP_md=$'\E[01;31m'
+#export LESS_TERMCAP_me=$'\E[0m'
+#export LESS_TERMCAP_se=$'\E[0m'
+#export LESS_TERMCAP_so=$'\E[01;44;33m'
+#export LESS_TERMCAP_ue=$'\E[0m'
+#export LESS_TERMCAP_us=$'\E[01;32m'
+
+#export GREP_COLOR='1;32'

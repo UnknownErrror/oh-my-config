@@ -16,10 +16,10 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 # A few utility functions to make it easy and re-usable to draw segmented prompts
 
 CURRENT_BG='NONE'
-CURRENT_RIGHT_BG='NONE'
 
 # Special Powerline characters # Do not change this!
 SEGMENT_SEPARATOR=$'\ue0b0'
+
 prompt_segment() { # prompt_segment bg fg segment
 	local bg fg
 	[[ -n $1 ]] && bg="%K{$1}" || bg="%k"
@@ -150,7 +150,7 @@ prompt_dir() { # Dir: ( / WO) + (PWD)
 	else
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	
+	[[ -O $PWD ]] && icon+=":" || icon+="."
 	prompt_segment blue default "${icon}%~"
 }
 prompt_dir_lite() { # Dir (Lite): () + (PWD)
@@ -239,18 +239,18 @@ prompt_git() { # Git: branch/detached head, dirty status
 			fi
 		elif [[ -e "${git_dir}/rebase-apply" ]]; then
 			if [[ -e "${git_dir}/rebase-apply/rebasing" ]]; then
-				echo -n " >R[rebase]>"
+				echo -n " >R>"
 			elif [[ -e "${git_dir}/rebase-apply/applying" ]]; then
-				echo -n " >R[am]>"
+				echo -n " <A<"
 			else
-				echo -n " >R[am/rebase]>"
+				echo -n " <A</>R>"
 			fi
 		elif [[ -e "${git_dir}/CHERRY_PICK_HEAD" ]]; then
-			echo -n " [CherryPick]"
+			echo -n " <C<"
 		elif [[ -e "${git_dir}/REVERT_HEAD" ]]; then
 			echo -n " [Revert]"
 		elif local result=$(local todo; if [[ -r "${git_dir}/sequencer/todo" ]] && read todo < "${git_dir}/sequencer/todo"; then
-				case "$todo" in (p[\ \	]|pick[\ \	]*) echo -n "[CherryPick]" ;; (revert[\ \	]*) echo -n "[Revert]" ;; esac
+				case "$todo" in (p[\ \	]|pick[\ \	]*) echo -n "<C<" ;; (revert[\ \	]*) echo -n "[Revert]" ;; esac
 			fi) && [[ -n ${result} ]]; then
 			# see if a cherry-pick or revert is in progress, if the user has committed a
 			# conflict resolution with 'git commit' in the middle of a sequence of picks or
@@ -460,14 +460,14 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 
 
 
-
+# agnor_async_data="${TMPPREFIX}-agnor_data"
 prompt_bureau_setup() {
 	add-zsh-hook precmd prompt_bureau_precmd
 	add-zsh-hook zshexit prompt_bureau_exit
 }
 prompt_bureau_prompt() {
 	local color=green
-	if [ "$UID" = "0" ]; then color=red; fi
+	[ "$UID" = "0" ] && color=red
 	echo "> %{$fg[${color}]%}%(!.#.$)%{$reset_color%} "
 }
 prompt_bureau_rprompt_file() {

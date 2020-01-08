@@ -29,6 +29,13 @@ function bg256() {
 	echo -n $'\e[48;5;'$(color256 "$@")"m"
 }
 
+function hex2dec() {
+	awk 'BEGIN { printf "%d\n",0x$1}'
+}
+function dec2hex() {
+	awk 'BEGIN { printf "%x\n",$1}'
+}
+
 
 function repeat0() { # repeat <count> <command>
 	local i max
