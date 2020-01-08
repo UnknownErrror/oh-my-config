@@ -66,8 +66,23 @@ alias b64d='base64 --decode'
 alias path='print -l $path'
 
 alias sd='cd /sdcard/'
-alias home='cd $HOME/'
+alias home='cd $HOME/'
 alias omzsh='cd $ZSH/'
 
 alias ffix='~/tmux ffix'
 alias tupd='~/tmux upd'
+
+alias starwars='telnet towel.blinkenlights.nl'
+
+alias g='git'
+alias commit-all="git add -A && git commit -v -m \"$(curl -s 'http://whatthecommit.com/index.txt')\""
+alias commit="git commit -v -m \"$(curl -s 'http://whatthecommit.com/index.txt')\""
+alias uncommit='git reset --soft HEAD^'
+alias rm-tags='(for t in `git tag`; do git push origin :$t; git tag -d $t; done)'
+alias get-pretty-log="git log --graph --pretty=format:'%Cred%h%Creset %an: %s - %Creset %C(yellow)%d%Creset %Cgreen(%cr)%Creset' --abbrev-commit --date=relative"
+# git reset --hard <commitID> && git clean -f
+alias get-commit-hist="git reflog show | grep '}: commit' | nl | sort -nr | nl | sort -nr | cut --fields=1,3 | sed s/commit://g | sed -e 's/HEAD*@{[0-9]*}://g'"
+# git merge -s ours; git push -f
+alias git-tree='git log --graph --oneline --all'
+
+
