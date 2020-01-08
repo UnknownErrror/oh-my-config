@@ -122,7 +122,7 @@ prompt_context() { # Context: ((ssh) <user>@<hostname> / (screen) <user>@<hostna
 	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
 		prompt_segment black yellow "(ssh) %(!..%{%F{default}%})${USER}@%m"
 	elif [[ -n $STY ]]; then
-		prompt_segment black default "(screen) %(!.%{%F{yellow}%}.)${USER}@%m"
+		prompt_segment black white "(screen) %(!.%{%F{yellow}%}.)${USER}@%m"
 	elif [[ -n $TMUX ]]; then
 		local session_name="$(tmux display-message -p '#S')"
 		if [[ -n $session_name ]]; then
@@ -131,7 +131,7 @@ prompt_context() { # Context: ((ssh) <user>@<hostname> / (screen) <user>@<hostna
 			prompt_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
 		fi
 	elif [[ $USER != $DEFAULT_USER ]]; then
-		prompt_segment black default "%(!.%{%F{yellow}%}.)${USER}@%m"
+		prompt_segment black white "%(!.%{%F{yellow}%}.)${USER}@%m"
 	fi
 }
 
@@ -150,18 +150,17 @@ prompt_dir() { # Dir: ( / WO) + (PWD)
 	else
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	[[ -O $PWD ]] && icon+=":" || icon+="."
-	prompt_segment blue default "${icon}%~"
+	prompt_segment blue white "${icon}%~"
 }
 prompt_dir_lite() { # Dir (Lite): () + (PWD)
 	local icon
 	if [[ ! -w "$PWD" ]]; then
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	prompt_segment blue default "${icon}%~"
+	prompt_segment blue white "${icon}%~"
 }
 prompt_dir_simple() { # Dir (Simple): (PWD)
-	prompt_segment blue default "%~"
+	prompt_segment blue white "%~"
 }
 
 prompt_time() { # System time
@@ -460,43 +459,41 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 
 
 
-# agnor_async_data="${TMPPREFIX}-agnor_data"
-prompt_bureau_setup() {
+agnor_async_setup() {
+	AGNOR_ASYNC_PROC=0
+	agnor_get_async_filename() {
+		echo "${TMPPREFIX}-$(whoami)-agnor_prompt.$$"
+	}
+	
+	agnor_hook_precmd() {
+		# kill child if necessary
+		if [[ "${AGNOR_ASYNC_PROC}" != 0 ]]; then
+			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
+		fi
+		# start background computation
+		prompt_agnor_async_prompt &!
+		AGNOR_ASYNC_PROC=$!
+	}
+	agnor_hook_zshexit() {
+		rm -f "$(agnor_get_async_filename)" 2> /dev/null
+	}
+	
+	prompt_agnor_async_prompt() {
+		local result=''
+		echo $result > "$(agnor_get_async_filename)"
+		kill -s USR1 $$ # signal parent
+	}
+	
 	add-zsh-hook precmd prompt_bureau_precmd
 	add-zsh-hook zshexit prompt_bureau_exit
+	
+	TRAPUSR1() {
+		PROMPT+="$(cat $(agnor_get_async_filename))" # read from temp file
+		AGNOR_ASYNC_PROC=0 # reset proc number
+		zle && zle reset-prompt # reload
+	}
 }
-prompt_bureau_prompt() {
-	local color=green
-	[ "$UID" = "0" ] && color=red
-	echo "> %{$fg[${color}]%}%(!.#.$)%{$reset_color%} "
-}
-prompt_bureau_rprompt_file() {
-	echo "/tmp/$(whoami)_zsh_rprompt.$$"
-}
-BUREAU_ASYNC_PROC=0
-prompt_bureau_precmd() {
-	# kill child if necessary
-	if [[ "${BUREAU_ASYNC_PROC}" != 0 ]]; then
-		kill -s HUP $BUREAU_ASYNC_PROC >/dev/null 2>&1 || :
-	fi
 
-	# start background computation
-	prompt_bureau_vcs_prompt &!
-	BUREAU_ASYNC_PROC=$!
-}
-prompt_bureau_vcs_prompt() {
-	vcs_info
-	printf "%s" "$vcs_info_msg_0_" > "$(prompt_bureau_rprompt_file)"
-	kill -s USR1 $$ # signal parent
-}
-prompt_bureau_exit() {
-	rm -f "$(prompt_bureau_rprompt_file)" 2> /dev/null
-}
-TRAPUSR1____________() {
-	RPROMPT="$(cat $(prompt_bureau_rprompt_file))" # read from temp file
-	BUREAU_ASYNC_PROC=0 # reset proc number
-	zle && zle reset-prompt # reload
-}
 
 
 

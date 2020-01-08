@@ -17,7 +17,7 @@ prompt_segment_right() {
 }
 
 prompt_vi() {
-	if [[ -n $N_MODE || -n $MODE_INDICATOR ]] && [[ $SP_DISABLE_VI_INDICATOR != true ]]; then
+	if [[ -n $N_MODE || -n $MODE_INDICATOR ]]; then
 		N_MODE="[N] "
 		I_MODE="[I] "
 		prompt_segment_right 246 black "`vi_mode_prompt_info`"
@@ -60,15 +60,4 @@ prompt_aws() {
 	text="$profile"
 	[[ -n $region ]] && text="$text [$region]"
 	prompt_segment magenta $PRIMARY_FG " $CLOUD $text "
-}
-
-prompt_tmux_context() { # [-] TMUX Context (tmux / tmux@<session_nsame>)
-	if [[ -n $TMUX ]]; then
-		local session_name="$(tmux display-message -p '#S')"
-		if [[ -n $session_name ]]; then
-			prompt_segment black magenta "tmux@$session_name"
-		else
-			prompt_segment black magenta "tmux"
-		fi
-	fi
 }
