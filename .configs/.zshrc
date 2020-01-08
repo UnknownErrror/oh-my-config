@@ -1,17 +1,26 @@
+<<<<<<< HEAD
 [[ -d "/data/data/com.termux" ]] && export TMUX_PATH="/data/data/com.termux" || export TMUX_PATH=''
 
 export USER="$(id -un)"
 [[ -n $TMUX_PATH ]] && export DEFAULT_USER="u0_a78" || export DEFAULT_USER="unkerr"
+=======
+export USER="$(id -un)"
+export DEFAULT_USER="u0_a78"
+>>>>>>> Stuff
 
 export TERM="xterm-256color"
 
 export EDITOR=micro
 export ZSH="$HOME/.oh-my-config" # [REQ]
 export SD="/sdcard"
+<<<<<<< HEAD
 
 
 LSCOLORS="cxFxgxhxbxeadaabagDdad" # BSD
 LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0;41:sg=0;46:tw=1;33;43:ow=0;43:" # Linux
+=======
+export TMUX_PATH="/data/data/com.termux"
+>>>>>>> Stuff
 
 
 CASE_SENSITIVE=false # Use case-sensitive completion
@@ -19,6 +28,7 @@ HYPHEN_INSENSITIVE=false # Use hyphen-insensitive completion; Case-sensitive com
 # DISABLE_MAGIC_FUNCTIONS=true # Uncomment if pasting URLs and other text is messed up.
 ENABLE_CORRECTION=true # Enable command auto-correction
 COMPLETION_WAITING_DOTS=true # Display red dots whilst waiting for completion
+<<<<<<< HEAD
 DISABLE_AUTO_TITLE=false
 DISABLE_LS_COLORS=false
 ZSH_THEME="custom"
@@ -32,6 +42,21 @@ plugins=(
 	extract last-working-dir colored-man-pages jump
 	
 	adb pip gem
+=======
+# DISABLE_UNTRACKED_FILES_DIRTY=true # Disable marking untracked files under VCS as dirty. This makes repository status check for large repositories muuuch faster
+# ZSH_AUTOSUGGEST_STRATEGY=( completion history ) # [HARD]
+DISABLE_AUTO_TITLE=false
+DISABLE_LS_COLORS=false
+ZSH_THEME="agnoster2"
+
+plugins=(
+	# git
+	# zsh-syntax-highlighting
+	fast-syntax-highlighting
+	zsh-autosuggestions
+	extract
+	last-working-dir
+>>>>>>> Stuff
 )
 source $ZSH/zsh-init.zsh # [REQ]
 
@@ -59,11 +84,19 @@ DIRSTACKSIZE=20
 
 ### Changing dirs:
 # setopt AUTO_CD # theme-and-appereance.zsh
+<<<<<<< HEAD
 # setopt AUTO_PUSHD # directories.zsh
 setopt CHASE_DOTS
 unsetopt CHASE_LINKS
 # setopt PUSHD_IGNORE_DUPS # directories.zsh
 # setopt PUSHD_MINUS # directories.zsh
+=======
+setopt AUTO_PUSHD
+setopt CHASE_DOTS
+unsetopt CHASE_LINKS
+setopt PUSHD_IGNORE_DUPS
+setopt PUSHD_MINUS # Exchanges the meanings of `+` and `-` when used with a number to specify a directory in the stack.
+>>>>>>> Stuff
 unsetopt PUSHD_SILENT
 setopt PUSHD_TO_HOME
 
@@ -141,11 +174,20 @@ setopt LOCAL_LOOPS
 ### Zle:
 setopt BEEP
 
+<<<<<<< HEAD
+=======
+source $ZSH/.configs/aliases.zsh
+source $ZSH/.configs/functions.zsh
+>>>>>>> Stuff
 
 # [INIT]
 
 # chcur 1
+<<<<<<< HEAD
 [[ -n $TMUX_PATH ]] && chpath bb
+=======
+chpath bb
+>>>>>>> Stuff
 
 # run-help command
 unalias run-help
@@ -156,4 +198,9 @@ autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
 
+<<<<<<< HEAD
 git config credential.helper 'cache --timeout=604800'
+=======
+autoload tetris
+
+>>>>>>> Stuff

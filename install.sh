@@ -3,7 +3,11 @@
 # Install main
 pkg install -y root-repo
 # root-repo - Termux repository for root
+<<<<<<< HEAD
 apt update && apt full-upgrade -y && apt autoremove -y
+=======
+apt update && apt upgrade -y
+>>>>>>> Stuff
 termux-setup-storage
 apt install -y tsu curl wget git micro ncurses-utils man
 # curl wget git man
@@ -23,6 +27,7 @@ cd $HOME
 ZSH=$HOME/.oh-my-config
 
 git clone https://github.com/UnknownErrror/oh-my-config.git $ZSH --depth 1
+<<<<<<< HEAD
 cp -vR $ZSH/.termux $HOME
 cp -vR $ZSH/.configs/.zshrc $HOME/
 cp -vR $ZSH/.configs/.zlogin $HOME/
@@ -30,6 +35,15 @@ cp -vR $ZSH/.configs/.zlogout $HOME/
 
 git clone https://github.com/zdharma/fast-syntax-highlighting.git  $ZSH/custom/plugins/fast-syntax-highlighting --depth 1
 # git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH/custom/plugins/zsh-syntax-highlighting --depth 1
+=======
+mv -vR $ZSH/.termux $HOME
+mv -vR $ZSH/.configs/.zshrc $HOME/
+mv -vR $ZSH/.configs/.zlogin $HOME/
+mv -vR $ZSH/.configs/.zlogout $HOME/
+
+git clone https://github.com/zdharma/fast-syntax-highlighting.git  $ZSH/custom/plugins/fast-syntax-highlighting --depth 1
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH/custom/plugins/zsh-syntax-highlighting --depth 1
+>>>>>>> Stuff
 git clone https://github.com/zsh-users/zsh-autosuggestions.git     $ZSH/custom/plugins/zsh-autosuggestions --depth 1
 git clone https://github.com/zsh-users/zsh-completions.git         $ZSH/custom/plugins/zsh-completions --depth 1
 chsh -s zsh
@@ -43,7 +57,11 @@ apt install -y nodejs python ruby
 # apt install -y clang python-dev # Python development
 python -m pip install --upgrade pip
 
+<<<<<<< HEAD
 apt install -y tree htop mc unrar zip jq nnn exa
+=======
+apt install -y tree htop mc unrar zip jq nnn
+>>>>>>> Stuff
 # tree      - Recursive directory lister
 # htop      - Process viewer
 # mc        - Midnight Commander - file manager
@@ -66,6 +84,7 @@ gem install lolcat
 
 
 
+<<<<<<< HEAD
 echo "oh-my-config install complete!"
 echo ''
 echo ''
@@ -79,4 +98,11 @@ $HOME/.termux/fonts.sh
 
 echo ''
 echo ''
+=======
+echo "oh-my-config install complete!\nChoose your color scheme now~ (Default the best)"
+$HOME/.termux/colors.sh
+echo "Choose your font now~ (Meslo the best)"
+$HOME/.termux/fonts.sh
+
+>>>>>>> Stuff
 echo "Please restart Termux app..."

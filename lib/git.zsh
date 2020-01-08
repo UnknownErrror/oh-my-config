@@ -125,9 +125,15 @@ function git_prompt_status() { # Get the status of the working tree
 	if $(echo "$INDEX" | command grep -E '^\?\? ' &> /dev/null); then
 		STATUS="$ZSH_THEME_GIT_PROMPT_UNTRACKED$STATUS"
 	fi
+<<<<<<< HEAD
 	if $(echo "$INDEX" | grep '^A  ' &> /dev/null); then
 		STATUS="$ZSH_THEME_GIT_PROMPT_ADDED$STATUS"
 	elif $(echo "$INDEX" | grep '^M ' &> /dev/null); then
+=======
+	if $(echo "$INDEX" | grep '^A	' &> /dev/null); then
+		STATUS="$ZSH_THEME_GIT_PROMPT_ADDED$STATUS"
+	elif $(echo "$INDEX" | grep '^M	' &> /dev/null); then
+>>>>>>> Stuff
 		STATUS="$ZSH_THEME_GIT_PROMPT_ADDED$STATUS"
 	elif $(echo "$INDEX" | grep '^MM ' &> /dev/null); then
 		STATUS="$ZSH_THEME_GIT_PROMPT_ADDED$STATUS"
@@ -141,12 +147,20 @@ function git_prompt_status() { # Get the status of the working tree
 	elif $(echo "$INDEX" | grep '^ T ' &> /dev/null); then
 		STATUS="$ZSH_THEME_GIT_PROMPT_MODIFIED$STATUS"
 	fi
+<<<<<<< HEAD
 	if $(echo "$INDEX" | grep '^R  ' &> /dev/null); then
+=======
+	if $(echo "$INDEX" | grep '^R	' &> /dev/null); then
+>>>>>>> Stuff
 		STATUS="$ZSH_THEME_GIT_PROMPT_RENAMED$STATUS"
 	fi
 	if $(echo "$INDEX" | grep '^ D ' &> /dev/null); then
 		STATUS="$ZSH_THEME_GIT_PROMPT_DELETED$STATUS"
+<<<<<<< HEAD
 	elif $(echo "$INDEX" | grep '^D  ' &> /dev/null); then
+=======
+	elif $(echo "$INDEX" | grep '^D	' &> /dev/null); then
+>>>>>>> Stuff
 		STATUS="$ZSH_THEME_GIT_PROMPT_DELETED$STATUS"
 	elif $(echo "$INDEX" | grep '^AD ' &> /dev/null); then
 		STATUS="$ZSH_THEME_GIT_PROMPT_DELETED$STATUS"

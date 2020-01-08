@@ -1,9 +1,15 @@
 src() {
 	local cache="$ZSH_CACHE_DIR"
 	autoload -U compinit zrecompile
+<<<<<<< HEAD
 	compinit -i -d "$ZSH_CACHE_DIR/zcomp-$HOST"
 
 	for f in ~/.zshrc "$ZSH_CACHE_DIR/zcomp-$HOST"; do
+=======
+	compinit -i -d "$cache/zcomp-$HOST"
+
+	for f in ~/.zshrc "$cache/zcomp-$HOST"; do
+>>>>>>> Stuff
 		zrecompile -p $f && command rm -f $f.zwc.old
 	done
 

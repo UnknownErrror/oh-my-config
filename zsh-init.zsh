@@ -10,7 +10,11 @@
 	
 	is_plugin() { # is_plugin <base_dir> <plugin_name>
 		local plugin_dir=$1/plugins/$2
+<<<<<<< HEAD
 		test -f $plugin_dir/$2.plugin.zsh || test -f $plugin_dir/_$2
+=======
+		test -f $plugin_dir/$2.plugin.zsh
+>>>>>>> Stuff
 	}
 	for plugin ($plugins); do # Add all defined plugins to fpath. This must be done before running compinit.
 		if is_plugin $ZSH_CUSTOM $plugin; then

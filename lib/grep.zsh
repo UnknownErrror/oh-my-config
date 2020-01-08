@@ -13,5 +13,9 @@
 	fi
 	
 	alias grep="grep $GREP_OPTIONS"
+<<<<<<< HEAD
+=======
+	
+>>>>>>> Stuff
 	unfunction grep-flag-available
 }
