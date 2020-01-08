@@ -38,12 +38,10 @@
 	for config_file ($ZSH/lib/*.zsh); do # Load all of the config files in ~/oh-my-zsh that end in .zsh
 		custom_config_file="${ZSH_CUSTOM}/lib/${config_file:t}"
 		[[ -f "${custom_config_file}" ]] && config_file=${custom_config_file}
-		echo $config_file
 		source $config_file
 	done
 
 	for plugin ($plugins); do # Load all of the plugins that were defined in ~/.zshrc
-		echo $plugin
 		if [[ -f $ZSH_CUSTOM/plugins/$plugin/$plugin.plugin.zsh ]]; then
 			source $ZSH_CUSTOM/plugins/$plugin/$plugin.plugin.zsh
 			
@@ -54,12 +52,10 @@
 	done
 
 	for config_file ($ZSH_CUSTOM/*.zsh(N)); do # Load all of your custom configurations from custom/
-		echo $config_file
 		source $config_file
 	done
 	
 	if [[ $ZSH_THEME != "" ]]; then # Load the theme
-		echo $ZSH_THEME
 		if [ -f $ZSH_CUSTOM/themes/$ZSH_THEME.zsh-theme ]; then
 			source $ZSH_CUSTOM/themes/$ZSH_THEME.zsh-theme
 			
