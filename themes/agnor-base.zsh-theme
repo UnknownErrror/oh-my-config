@@ -405,13 +405,20 @@ prompt_shell_chars() { # ($ / #) ❯
 
 build_prompt() {
 	RETVAL=$?
+	RETVALS=( "$pipestatus[@]" )
 	
-	prompt_retval_status_lite
+	prompt_retval_status
 	prompt_root_status
+	prompt_jobs_status
+	# prompt_virtualenv
+	# prompt_aws
 	prompt_context
-	prompt_dir_lite
+	
+	prompt_dir
 	prompt_git
-	prompt_end
+	# prompt_bzr
+	# prompt_hg
+	prompt_newline
 	
 	prompt_shell_chars
 }

@@ -23,7 +23,7 @@ ENABLE_CORRECTION=true # Enable command auto-correction
 COMPLETION_WAITING_DOTS=true # Display red dots whilst waiting for completion
 DISABLE_AUTO_TITLE=false
 DISABLE_LS_COLORS=false
-ZSH_THEME="custom"
+ZSH_THEME="agnor-base"
 
 plugins=(
 	gitfast # git
