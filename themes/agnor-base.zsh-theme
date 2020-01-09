@@ -470,7 +470,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	agnor_hook_precmd_2() {
 		# kill child if necessary
 		if [[ AGNOR_ASYNC_PROC != 0 ]]; then
-			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
+			#kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
 		fi
 		# start background computation
 		prompt_agnor_async_prompt &!
