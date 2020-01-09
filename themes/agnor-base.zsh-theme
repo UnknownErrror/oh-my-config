@@ -440,6 +440,14 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 		start_time=$SECONDS
 	}
 	function agnor_hook_precmd() {
+		# kill child if necessary
+		if [[ AGNOR_ASYNC_PROC -ne 0 ]]; then
+			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
+		fi
+		# start background computation
+		prompt_agnor_async_prompt &!
+		AGNOR_ASYNC_PROC=$!
+		
 		if [[ start_time -ne 0 ]]; then
 			local elapsed_time=$(( SECONDS - start_time ))
 			if [[ elapsed_time -ge 3600 ]]; then
@@ -464,38 +472,23 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
 		zle && { zle reset-prompt; zle -R }
 	}
-}
-
-
-() { # Async setup
-	agnor_hook_precmd_2() {
-		# kill child if necessary
-		if [[ AGNOR_ASYNC_PROC -ne 0 ]]; then
-			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
-		fi
-		# start background computation
-		echo 'run'
-		{ prompt_agnor_async_prompt > "$(agnor_get_async_filename)" 2>&1 }&
-		AGNOR_ASYNC_PROC=$!
-	}
+	
 	agnor_hook_zshexit() {
 		rm -f "$(agnor_get_async_filename)" 2> /dev/null
 	}
 	
 	prompt_agnor_async_prompt() {
 		AGNOR_ASYNC_RUN=1
-		prompt_git
+		prompt_git > "$(agnor_get_async_filename)" 2>&1
 		AGNOR_ASYNC_RUN=0
 		kill -s USR1 $$ # signal parent
 	}
 	
-	add-zsh-hook precmd agnor_hook_precmd_2
 	add-zsh-hook zshexit agnor_hook_zshexit
 	
 	TRAPUSR1() {
 		AGNOR_ASYNC_READY=1
 		AGNOR_ASYNC_PROC=0 # reset proc number
-		echo 'reload'
 		zle && zle reset-prompt # reload
 		AGNOR_ASYNC_READY=0
 	}
