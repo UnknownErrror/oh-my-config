@@ -3,12 +3,15 @@ source ${0%/*}/agnor-icons.zsh
 ######################################
 ### Utilities ###
 
+GIT_ASYNC_DATA=''
+AGNOR_ASYNC_RUN=0
+
 # Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
 function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	local -a FLAGS=('--porcelain')
 	[[ AGNOR_DISABLE_UNTRACKED_FILES_DIRTY == true ]] && FLAGS+='--untracked-files=no'
 	[[ AGNOR_GIT_STATUS_IGNORE_SUBMODULES != "git" ]] && FLAGS+="--ignore-submodules=${AGNOR_GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
-	[[ -n $(git status ${FLAGS} 2>/dev/null | tail -n1) ]] && echo '*'
+	[[ -n $(git status ${FLAGS} 2>/dev/null) ]] && echo '*'
 }
 function agnor_get_async_filename() {
 	echo "${TMPPREFIX}-$(whoami)-agnor_prompt.$$"
@@ -179,6 +182,10 @@ prompt_date() { # System date
 (( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
+	if [[ AGNOR_ASYNC_RUN -eq 0 && GIT_ASYNC_DATA != '' ]]; then
+		echo -n "${GIT_ASYNC_DATA}"
+		return
+	fi
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		
@@ -455,4 +462,30 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
 		zle && { zle reset-prompt; zle -R }
 	}
+}
+
+
+() { # Async setup
+	agnor_async_response() {
+		GIT_ASYNC_DATA="$(<&$1)"
+		zle && zle reset-prompt # reload
+		GIT_ASYNC_DATA=''
+		
+		zle reset-prompt
+		
+		zle -F $1
+		exec {1}<&-
+	}
+	agnor_hook_precmd_2() {
+		PROMPT="waiting..."
+
+		exec {FD}< <(
+			AGNOR_ASYNC_RUN=1
+			prompt_git
+			AGNOR_ASYNC_RUN=0
+		)
+
+		zle -F $FD agnor_async_response
+	}
+	add-zsh-hook precmd agnor_hook_precmd_2
 }
