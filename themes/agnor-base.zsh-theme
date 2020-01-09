@@ -455,13 +455,13 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 				local remainder=$(( elapsed_time % 3600 ))
 				local timer_minutes=$(( remainder / 60 ))
 				local timer_seconds=$(( remainder % 60 ))
-				print -P "%B%F{red}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%b"
+				print -P "%B%F{red}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%b%f"
 			elif [[ elapsed_time -ge 60 ]]; then
 				local timer_minutes=$(( elapsed_time / 60 ))
 				local timer_seconds=$(( elapsed_time % 60 ))
-				print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%b"
+				print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%b%f"
 			elif [[ elapsed_time -gt 10 ]]; then
-				print -P "%B%F{green}>>> elapsed time ${elapsed_time}s%b"
+				print -P "%B%F{green}>>> elapsed time ${elapsed_time}s%b%f"
 			fi
 			start_time=0
 		fi
