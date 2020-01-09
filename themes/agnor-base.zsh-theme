@@ -948,6 +948,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 		if [[ AGNOR_ASYNC_PROC -ne 0 ]]; then
 			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
 		fi
+		echo 'run'
 		# start background computation
 		prompt_agnor_async_prompt &!
 		AGNOR_ASYNC_PROC=$!
