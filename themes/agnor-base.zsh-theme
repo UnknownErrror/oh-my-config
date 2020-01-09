@@ -482,7 +482,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	
 	prompt_agnor_async_prompt() {
 		prompt_git > "$(agnor_get_async_filename)" 2>&1
-		kill -s USR1 $$ # signal parent
+		#kill -s USR1 $$ # signal parent
 	}
 	
 	add-zsh-hook precmd agnor_hook_precmd_2
