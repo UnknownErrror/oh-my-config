@@ -957,9 +957,11 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	}
 	
 	prompt_agnor_async_prompt() {
+		echo 'async1'
 		AGNOR_ASYNC_RUN=1
 		prompt_git > "$(agnor_get_async_filename)" 2>&1
 		AGNOR_ASYNC_RUN=0
+		echo 'async2'
 		kill -s USR1 $$ # signal parent
 	}
 	
@@ -969,6 +971,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	TRAPUSR1() {
 		AGNOR_ASYNC_READY=1
 		AGNOR_ASYNC_PROC=0 # reset proc number
+		echo 'reload'
 		zle && zle reset-prompt # reload
 		AGNOR_ASYNC_READY=0
 	}
