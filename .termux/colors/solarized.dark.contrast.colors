@@ -1,0 +1,51 @@
+# solarized.dark.mod.colors (solarized.dark + tango)
+
+background=#323232323232
+# background=#002B36
+foreground=#ffffff
+cursor=#F7F7F7
+
+color0=#073642
+color1=#DC322F
+color2=#859900
+color3=#c4c4a0a00000 # green
+# color3=#B58900 # orig
+color4=#268BD2
+color5=#D33682
+color6=#2AA198
+color7=#EEE8D5
+color8=#646662 # grey
+# color8=#5f615d
+# color8=#555753 # orig
+color9=#CB4B16
+color10=#586E75
+color11=#657B83
+color12=#839496
+color13=#6C71C4
+color14=#93A1A1
+color15=#FDF6E3
+
+
+export COLOR_01="#002831"           # HOST
+export COLOR_02="#d11c24"           # SYNTAX_STRING
+export COLOR_03="#6cbe6c"           # COMMAND
+export COLOR_04="#a57706"           # COMMAND_COLOR2
+export COLOR_05="#2176c7"           # PATH
+export COLOR_06="#c61c6f"           # SYNTAX_VAR
+export COLOR_07="#259286"           # PROMP
+export COLOR_08="#eae3cb"           #
+
+export COLOR_09="#006488"           #
+export COLOR_10="#f5163b"           # COMMAND_ERROR
+export COLOR_11="#51ef84"           # EXEC
+export COLOR_12="#b27e28"           #
+export COLOR_13="#178ec8"           # FOLDER
+export COLOR_14="#e24d8e"           #
+export COLOR_15="#00b39e"           #
+export COLOR_16="#fcf4dc"           #
+
+export BACKGROUND_COLOR="#001e27"   # Background Color
+export FOREGROUND_COLOR="#9cc2c3"   # Text
+export CURSOR_COLOR="$FOREGROUND_COLOR" # Cursor
+
+
