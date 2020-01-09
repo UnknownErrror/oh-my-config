@@ -3,6 +3,9 @@ source ${0%/*}/agnor-icons.zsh
 ######################################
 ### Utilities ###
 
+AGNOR_ASYNC_PROC=0
+AGNOR_ASYNC_READY=0
+
 # Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
 function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	local -a FLAGS=('--porcelain')
@@ -10,6 +13,10 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	[[ AGNOR_GIT_STATUS_IGNORE_SUBMODULES != "git" ]] && FLAGS+="--ignore-submodules=${AGNOR_GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
 	[[ -n $(git status ${FLAGS} 2>/dev/null | tail -n1) ]] && echo '*'
 }
+function agnor_get_async_filename() {
+	echo "${TMPPREFIX}-$(whoami)-agnor_prompt.$$"
+}
+
 
 ######################################
 ### Segment drawing ###
@@ -175,6 +182,10 @@ prompt_date() { # System date
 (( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
+	if [[ AGNOR_ASYNC_READY != 0 ]]; then
+		cat $(agnor_get_async_filename)
+		return
+	fi
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		
@@ -455,19 +466,10 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 }
 
 
-
-
-
-
-agnor_async_setup() {
-	AGNOR_ASYNC_PROC=0
-	agnor_get_async_filename() {
-		echo "${TMPPREFIX}-$(whoami)-agnor_prompt.$$"
-	}
-	
-	agnor_hook_precmd() {
+() { # Async setup
+	agnor_hook_precmd_2() {
 		# kill child if necessary
-		if [[ "${AGNOR_ASYNC_PROC}" != 0 ]]; then
+		if [[ AGNOR_ASYNC_PROC != 0 ]]; then
 			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
 		fi
 		# start background computation
@@ -479,18 +481,18 @@ agnor_async_setup() {
 	}
 	
 	prompt_agnor_async_prompt() {
-		local result=''
-		echo $result > "$(agnor_get_async_filename)"
+		prompt_git > "$(agnor_get_async_filename)" 2>&1
 		kill -s USR1 $$ # signal parent
 	}
 	
-	add-zsh-hook precmd prompt_bureau_precmd
-	add-zsh-hook zshexit prompt_bureau_exit
+	add-zsh-hook precmd agnor_hook_precmd_2
+	add-zsh-hook zshexit agnor_hook_zshexit
 	
 	TRAPUSR1() {
-		PROMPT+="$(cat $(agnor_get_async_filename))" # read from temp file
+		AGNOR_ASYNC_READY=1
 		AGNOR_ASYNC_PROC=0 # reset proc number
 		zle && zle reset-prompt # reload
+		AGNOR_ASYNC_READY=0
 	}
 }
 
