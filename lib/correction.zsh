@@ -10,5 +10,8 @@ if [[ "$ENABLE_CORRECTION" == "true" ]]; then
 	alias mysql='nocorrect mysql'
 	alias sudo='nocorrect sudo'
 	
+	setopt CORRECT
 	setopt CORRECT_ALL
+	CORRECT_IGNORE='_*'
+	CORRECT_IGNORE_FILE='_*'
 fi

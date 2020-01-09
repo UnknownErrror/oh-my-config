@@ -12,6 +12,7 @@ export SD="/sdcard"
 
 LSCOLORS="cxFxgxhxbxeadaabagDdad" # BSD
 LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0;41:sg=0;46:tw=1;33;43:ow=0;43:" # Linux
+eval $(dircolors -b $ZSH/.configs/LS_COLORS)
 
 
 CASE_SENSITIVE=false # Use case-sensitive completion
@@ -56,7 +57,6 @@ HISTSIZE=100000
 DIRSTACKSIZE=20
 
 
-# setopt CORRECT_ALL # correction.zsh
 
 ### Changing dirs:
 # setopt AUTO_CD # theme-and-appereance.zsh
@@ -114,7 +114,8 @@ setopt HIST_SAVE_NO_DUPS
 
 ### Input/Output:
 setopt CLOBBER
-setopt CORRECT
+# setopt CORRECT # correction.zsh
+# setopt CORRECT_ALL # correction.zsh
 # unsetopt FLOW_CONTROL # completion.zsh
 unsetopt IGNORE_EOF
 # setopt INTERACTIVE_COMMENTS # misc.zsh
@@ -156,5 +157,3 @@ autoload run-help
 autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
-
-eval $(dircolors -b $ZSH/.configs/LS_COLORS)
