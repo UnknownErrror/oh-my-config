@@ -477,14 +477,11 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 		exec {1}<&-
 	}
 	agnor_hook_precmd_2() {
-		PROMPT="waiting..."
-
 		exec {FD}< <(
 			AGNOR_ASYNC_RUN=1
 			prompt_git
 			AGNOR_ASYNC_RUN=0
 		)
-
 		zle -F $FD agnor_async_response
 	}
 	add-zsh-hook precmd agnor_hook_precmd_2
