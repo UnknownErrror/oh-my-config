@@ -473,7 +473,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 
 () { # Async setup
 	agnor_async_response() {
-		RPROMPT='%{%f%b%k%}$(<&$1)'
+		RPROMPT="%{%f%b%k%}$(<&$1)"
 		
 		zle -F $1
 		exec {1}<&-
