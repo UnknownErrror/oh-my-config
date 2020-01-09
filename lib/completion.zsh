@@ -32,7 +32,6 @@ zstyle ':completion:*' special-dirs false # Complete . and .. special directorie
 
 zstyle ':completion:*' list-colors ''
 zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#) ([0-9a-z-]#)*=01;34=0=01'
-
 if [[ "$OSTYPE" = solaris* ]]; then
 	zstyle ':completion:*:*:*:*:processes' command "ps -u $USER -o pid,user,comm"
 else
@@ -50,8 +49,7 @@ zstyle ':completion:*' list-prompt '%SAt %p: Hit TAB for more, or the character 
 zstyle ':completion:*' menu select=1 _complete _ignored _approximate
 zstyle ':completion:*' select-prompt '%SScrolling active: current selection at %p%s'
 
-# allow one error for every three characters typed in approximate completer
-zstyle ':completion:*:approximate:*' max-errors 3
+zstyle ':completion:*:approximate:*' max-errors 3 # allow one error for every three characters typed in approximate completer
 
 # formatting and messages
 zstyle ':completion:*' verbose yes
@@ -69,7 +67,7 @@ zstyle -e ':completion:*:-command-:*:commands' list-colors 'reply=( '\''=(#b)('\
 
 # This is needed to workaround a bug in _setup:12, causing almost 2 seconds delay for bigger LS_COLORS
 # UPDATE: not sure if this is required anymore, with the -command- style above.. keeping it here just to be sure
-zstyle ':completion:*:*:-command-:*' list-colors ''
+# zstyle ':completion:*:*:-command-:*' list-colors ''
 
 # use LS_COLORS for file coloring
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
