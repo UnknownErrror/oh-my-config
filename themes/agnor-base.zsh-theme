@@ -185,6 +185,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 		return
 	fi
 	CURRENT_BG=$1
+	echo -n '|' $CURRENT_BG '|'
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		
