@@ -2,18 +2,18 @@
 
 background=#323232
 foreground=#ffffff
-cursor=#F7F7F7
+cursor=#f7f7f7
 
 #   Black #2e3436
 color0=#073642
 #   Red #DC322F
 color1=#cc0000
-#   Green
-color2=#4e9a06
+#   Green # #5ab307 -> #66cc08 -> #61c208 -> *
+color2=#5cb808
 #   Yellow
 color3=#c4a000
-#   Blue
-color4=#268BD2
+#   Blue #268BD2
+color4=#1876ef
 #   Purple
 color5=#D33682
 #   Cyan; Orig: #06989a

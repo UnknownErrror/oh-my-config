@@ -49,7 +49,7 @@ alias mkdir='mkdir -pv' # recursive (p), verbose (v)
 alias nano='nano -l' # line-numbers (l)
 
 
-alias sudo='su -c "$@"'
+[[ -z $TMUX_PATH ]] && alias sudo='su -c "$@"'
 alias sysro='mount -o remount,ro /system'
 alias sysrw='mount -o remount,rw /system'
 alias mountrw='mount -o remount,rw'
