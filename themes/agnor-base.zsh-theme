@@ -475,7 +475,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 		fi
 		# start background computation
 		echo 'run'
-		prompt_agnor_async_prompt &!
+		prompt_agnor_async_prompt &! > "$(agnor_get_async_filename)" 2>&1
 		AGNOR_ASYNC_PROC=$!
 	}
 	agnor_hook_zshexit() {
@@ -484,10 +484,8 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	
 	prompt_agnor_async_prompt() {
 		AGNOR_ASYNC_RUN=1
-		echo 'async1'
-		prompt_git > "$(agnor_get_async_filename)" 2>&1
+		prompt_git
 		AGNOR_ASYNC_RUN=0
-		echo 'async2'
 		kill -s USR1 $$ # signal parent
 	}
 	
