@@ -3,8 +3,6 @@ source ${0%/*}/agnor-icons.zsh
 ######################################
 ### Utilities ###
 
-GIT_ASYNC_DATA=null
-
 # Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
 function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	local -a FLAGS=('--porcelain')
@@ -43,19 +41,6 @@ prompt_end() {
 	fi
 	echo -n "%{%f%}"
 	CURRENT_BG='NONE'
-}
-
-CURRENT_RIGHT_BG='NONE'
-SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
-
-prompt_segment_right() {
-	local bg fg
-	[[ -n $1 ]] && bg="%K{$1}" || bg="%k"
-	[[ -n $2 ]] && fg="%F{$2}" || fg="%f"
-	
-	echo -n "%K{$CURRENT_RIGHT_BG}%F{$1}$SEGMENT_SEPARATOR_RIGHT%{$bg%}%{$fg%} "
-	CURRENT_RIGHT_BG=$1
-	[[ -n $3 ]] && echo -n $3
 }
 
 
@@ -198,7 +183,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 			# local stashes=$(git stash list | wc -l)
 			local stashes=$(git stash list -n1 | wc -l)
 			if [[ stashes -ne 0 ]]; then
-				prompt_segment_right white black "+$stashes$(print_icon ETC_ICON)" # ⚙
+				prompt_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
 			fi
 		fi
 		
@@ -220,13 +205,13 @@ prompt_git() { # Git: branch/detached head, dirty status
 		fi
 		
 		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then # [EXPERIMENT]
-			prompt_segment_right red white # diverged state
+			prompt_segment red white # diverged state
 		elif [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]]; then
-			prompt_segment_right magenta white # merge/rebase is needed
+			prompt_segment magenta white # merge/rebase is needed
 		elif [[ -n $dirty ]]; then
-			prompt_segment_right yellow black
+			prompt_segment yellow black
 		else
-			prompt_segment_right green white # black
+			prompt_segment green white # black
 		fi
 		
 		echo -n "${ref_symbol} ${ref}"
@@ -297,9 +282,9 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 		if [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
-				prompt_segment_right magenta white # merge/rebase is needed
+				prompt_segment magenta white # merge/rebase is needed
 			else
-				prompt_segment_right cyan black
+				prompt_segment cyan black
 			fi
 			echo -n "\uE0A0 ${remote}" #  # VCS_BRANCH_ICON
 			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
@@ -307,9 +292,9 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
-			prompt_segment_right cyan black "bare repo"
+			prompt_segment cyan black "bare repo"
 		else
-			prompt_segment_right cyan black "GIT_DIR!"
+			prompt_segment cyan black "GIT_DIR!"
 		fi
 	fi
 } #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
@@ -411,7 +396,6 @@ prompt_hg() {  # [-] Mercurial
 
 prompt_newline() {
 	prompt_end
-	echo -n "%E"
 	echo
 }
 prompt_shell_chars() { # ($ / #) ❯
@@ -470,21 +454,36 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	}
 }
 
-RPROMPT=''
-() { # Async setup
-	agnor_async_response() {
-		local RPROMPT_PREFIX='%{'$'\e[1A''%}' # one line up
-		local RPROMPT_SUFFIX='%{'$'\e[1B''%}' # one line down
-		RPROMPT="${RPROMPT_PREFIX}%{%f%b%k%}$(<&$1)${RPROMPT_SUFFIX}"
-		
-		zle -F $1
-		exec {1}<&-
-	}
-	agnor_hook_precmd_2() {
-		exec {FD}< <(
-			prompt_git true
-		)
-		zle -F $FD agnor_async_response
-	}
-	add-zsh-hook precmd agnor_hook_precmd_2
+function set-prompt() {
+	local top_left='%~'
+	local top_right="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+	local bottom_left='%# '
+	local bottom_right='%T'
+
+	PROMPT="$(fill-line "$top_left" "$top_right")"$'\n'$bottom_left
+	RPROMPT=$bottom_right
+}
+
+function fill-line() {
+	local left_len=$(prompt-length $1)
+	local right_len=$(prompt-length $2)
+	local pad_len=$((COLUMNS - left_len - right_len - 1))
+	local pad=${(pl.$pad_len.. .)} # pad_len spaces
+	echo ${1}${pad}${2}
+}
+function prompt-length() {
+	emulate -L zsh
+	local -i x y=$#1 m
+	if (( y )); then
+		while (( ${${(%):-$1%$y(l.1.0)}[-1]} )); do
+			x=y
+			(( y *= 2 ));
+		done
+		local xy
+		while (( y > x + 1 )); do
+			m=$(( x + (y - x) / 2 ))
+			typeset ${${(%):-$1%$m(l.x.y)}[-1]}=$m
+		done
+	fi
+	echo $x
 }
