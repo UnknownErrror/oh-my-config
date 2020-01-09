@@ -191,12 +191,6 @@ prompt_date() { # System date
 (( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
-	if [[ -z "$1" ]]; then
-		if [[ GIT_ASYNC_DATA != 'null' ]]; then
-			echo -n "${GIT_ASYNC_DATA}"
-		fi
-		return
-	fi
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		

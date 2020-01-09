@@ -135,6 +135,12 @@ function build_prompt000() {
 # ?       | ?     - untracked
 # !       | !     - ignored
 
+# '+' 'new file: '
+# 'x' 'deleted: '
+# '!' 'modified: '
+# '>' 'renamed: '
+# '?' 'Untracked files:'
+
 
 build_prompt() {
 	RETVAL=$?
@@ -149,7 +155,7 @@ build_prompt() {
 	prompt_context
 	
 	prompt_dir
-	prompt_git
+	# prompt_git
 	# prompt_bzr
 	# prompt_hg
 	prompt_newline
