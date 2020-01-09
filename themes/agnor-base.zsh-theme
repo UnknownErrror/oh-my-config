@@ -942,10 +942,9 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 }
 
 
-() { # Async setup
+# () { # Async setup
 	agnor_hook_precmd_2() {
-		# kill child if necessary
-		if [[ AGNOR_ASYNC_PROC -ne 0 ]]; then
+		if [[ AGNOR_ASYNC_PROC -ne 0 ]]; then # kill child if necessary
 			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
 		fi
 		echo 'run'
@@ -976,7 +975,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 		zle && zle reset-prompt # reload
 		AGNOR_ASYNC_READY=0
 	}
-}
+# }
 
 
 
