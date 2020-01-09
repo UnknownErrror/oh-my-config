@@ -8,6 +8,7 @@ export TERM="xterm-256color"
 [[ -n $TMUX_PATH ]] && export EDITOR=micro || export EDITOR=nano
 export ZSH="$HOME/.oh-my-config" # [REQ]
 export SD="/sdcard"
+[[ -z $TMUX_PATH ]] && export DISPLAY=localhost:0.0 # X11
 
 
 LSCOLORS="cxFxgxhxbxeadaabagDdad" # BSD

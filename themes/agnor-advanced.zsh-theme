@@ -1,5 +1,4 @@
 source ${0%/*}/base.zsh-theme
-# el1t/statusline
 
 setopt transient_rprompt
 
@@ -31,8 +30,6 @@ build_rprompt() {
 }
 
 # RPROMPT='%{%f%b%k%}$(build_rprompt)'
-
-
 
 
 

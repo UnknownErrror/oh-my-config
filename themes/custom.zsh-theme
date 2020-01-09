@@ -48,37 +48,37 @@ parseGitStatus() {
 	local line gitstatus=$(git status --porcelain --untracked-files="${AGNOR_GIT_SHOW_UNTRACKED_FILES:-normal}")
 	while read -r line; do
 		case "${line:0:2}" in
-			\#\#) ;; # skip
+			\#\#) ;; # branch
 			\!\!) ;; # ignored
+			\?\?) (( num_untracked++ )) ;;
 			
-			\?\?) (( num_untracked++ )) ;; # untracked files
+			MM) ;; # 2(( num_staged++ )) # 2(( num_changed++ )) # (( num_modified++ )) # (( num_added++ ))
+			AM) ;; # 2(( num_staged++ )) # 2(( num_changed++ )) # (( num_modified++ ))
+			RM) ;; # 2(( num_staged++ )) # 2(( num_changed++ ))
+			CM) ;; # 2(( num_staged++ )) # 2(( num_changed++ ))
+			\ M) (( num_modified++ )); (( num_dirty++ )) ;; # 2(( num_changed++ ))
+			# \ T) (( num_modified++ )); # ???
 			
-			MM) ;; # (( num_staged++ )) # (( num_changed++ ))
-			AM) ;; # (( num_staged++ )) # (( num_changed++ ))
-			RM) ;; # (( num_staged++ )) # (( num_changed++ ))
-			CM) ;; # (( num_staged++ )) # (( num_changed++ ))
-			\ M) (( num_modified++ )); (( num_dirty++ )) ;; # (( num_changed++ ))
-			
-			MD) ;; # (( num_staged++ )) # (( num_changed++ ))
-			AD) ;; # (( num_staged++ )) # (( num_changed++ ))
-			RD) ;; # (( num_staged++ )) # (( num_changed++ ))
-			CD) ;; # (( num_staged++ )) # (( num_changed++ ))
+			MD) ;; # 2(( num_staged++ )) # (( num_changed++ ))
+			AD) ;; # 2(( num_staged++ )) # (( num_changed++ )) # (( num_deleted++ ))
+			RD) ;; # 2(( num_staged++ )) # (( num_changed++ ))
+			CD) ;; # 2(( num_staged++ )) # (( num_changed++ ))
 			\ D) (( num_deleted++ )); (( num_dirty++ )) ;; # (( num_changed++ ))
 			
 			# changes in the index
-			M\ ) (( num_modified++ )) ;; # (( num_staged++ ))
-			A\ ) (( num_added++ )) ;;    # (( num_staged++ ))
-			D\ ) (( num_deleted++ )) ;;  # (( num_staged++ ))
-			R\ ) (( num_renamed++ )) ;;  # (( num_staged++ ))
-			C\ ) (( num_copied++ )) ;;   # (( num_staged++ ))
+			M\ ) (( num_modified++ )) ;; # 2(( num_staged++ )) # (( num_added++ ))
+			A\ ) (( num_added++ )) ;;    # 2(( num_staged++ ))
+			D\ ) (( num_deleted++ )) ;;  # 2(( num_staged++ ))
+			R\ ) (( num_renamed++ )) ;;  # 2(( num_staged++ ))
+			C\ ) (( num_copied++ )) ;;   # 2(( num_staged++ ))
 			
-			DD) (( num_conflicts++ )) ;; # (( num_changed++ ))
-			AU) (( num_conflicts++ )) ;; # (( num_staged++ ))
+			DD) (( num_conflicts++ )) ;; # (( num_changed++ )) # (( num_staged++ ))
+			AU) (( num_conflicts++ )) ;; # 2(( num_staged++ ))
 			UD) (( num_conflicts++ )) ;; # (( num_changed++ ))
 			UA) (( num_conflicts++ )) ;;
-			DU) (( num_conflicts++ )) ;; # (( num_staged++ ))
-			AA) (( num_conflicts++ )) ;;
-			UU) (( num_conflicts++ )) ;; # ??? # (( num_unmerged++ ))
+			DU) (( num_conflicts++ )) ;; # 2(( num_staged++ ))
+			AA) (( num_conflicts++ )) ;; # (( num_staged++ ))
+			UU) (( num_conflicts++ )) ;; # (( num_unmerged++ ))
 			
 			# U?) (( num_conflicts++ )) ;;
 			# ?U) (( num_conflicts++ )) ;;
@@ -101,6 +101,40 @@ function build_prompt000() {
 		local will_rebase=$(git config --get branch.${current_branch}.rebase 2> /dev/null)
 	fi
 }
+
+# ' ' - unmodified
+# M - modified
+# A - added
+# D - deleted
+# R - renamed
+# C - copied
+# U - updated, but unmerged
+# ? - untracked
+# ! - ignored
+
+#         | [AMD] - not updated
+# M       | [ MD] - updated in index
+# A       | [ MD] - added to index
+# D       |       - deleted from index
+# R       | [ MD] - renamed in index
+# C       | [ MD] - copied in index
+# [MARK]  |       - index and worktree matches
+# [ MARK] | M     - worktree changed since index
+# [ MARK] | D     - deleted in worktree
+# [ D]    | R     - renamed in worktree
+# [ D]    | C     - copied in worktree
+# -----------------------------------------------
+# D       | D     - unmerged, both deleted
+# A       | U     - unmerged, added by us
+# U       | D     - unmerged, deleted by them
+# U       | A     - unmerged, added by them
+# D       | U     - unmerged, deleted by us
+# A       | A     - unmerged, both added
+# U       | U     - unmerged, both modified
+# -----------------------------------------------
+# ?       | ?     - untracked
+# !       | !     - ignored
+
 
 build_prompt() {
 	RETVAL=$?

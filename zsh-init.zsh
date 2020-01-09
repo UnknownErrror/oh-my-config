@@ -26,7 +26,7 @@
 	done
 
 	# Figure out the SHORT hostname
-	if [[ "$OSTYPE" = darwin* ]]; then # macOS's $HOST changes with dhcp, etc. Use ComputerName if possible.
+	if [[ OSTYPE = darwin* ]]; then # macOS's $HOST changes with dhcp, etc. Use ComputerName if possible.
 		SHORT_HOST=$(scutil --get ComputerName 2>/dev/null) || SHORT_HOST=${HOST/.*/}
 	else
 		SHORT_HOST=${HOST/.*/}
@@ -55,7 +55,7 @@
 		source $config_file
 	done
 	
-	if [[ $ZSH_THEME != "" ]]; then # Load the theme
+	if [[ -n "$ZSH_THEME" ]]; then # Load the theme
 		if [ -f $ZSH_CUSTOM/themes/$ZSH_THEME.zsh-theme ]; then
 			source $ZSH_CUSTOM/themes/$ZSH_THEME.zsh-theme
 			
