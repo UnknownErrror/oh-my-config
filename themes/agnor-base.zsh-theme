@@ -3,7 +3,7 @@ source ${0%/*}/agnor-icons.zsh
 ######################################
 ### Utilities ###
 
-GIT_ASYNC_DATA=''
+GIT_ASYNC_DATA='<null>'
 AGNOR_ASYNC_RUN=0
 
 # Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
@@ -182,7 +182,7 @@ prompt_date() { # System date
 (( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
-	if [[ AGNOR_ASYNC_RUN -eq 0 && GIT_ASYNC_DATA != '' ]]; then
+	if [[ AGNOR_ASYNC_RUN -eq 0 && GIT_ASYNC_DATA != '<null>' ]]; then
 		echo -n "${GIT_ASYNC_DATA}"
 		return
 	fi
@@ -469,7 +469,6 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	agnor_async_response() {
 		GIT_ASYNC_DATA="$(<&$1)"
 		zle && zle reset-prompt # reload
-		GIT_ASYNC_DATA=''
 		
 		zle reset-prompt
 		
