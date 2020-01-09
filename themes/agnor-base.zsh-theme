@@ -182,7 +182,7 @@ prompt_date() { # System date
 (( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
-	if [[ AGNOR_ASYNC_READY != 0 ]]; then
+	if [[ AGNOR_ASYNC_READY -ne 0 ]]; then
 		cat $(agnor_get_async_filename)
 		return
 	fi
@@ -469,8 +469,8 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 () { # Async setup
 	agnor_hook_precmd_2() {
 		# kill child if necessary
-		if [[ AGNOR_ASYNC_PROC != 0 ]]; then
-			#kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
+		if [[ AGNOR_ASYNC_PROC -ne 0 ]]; then
+			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
 		fi
 		# start background computation
 		prompt_agnor_async_prompt &!
