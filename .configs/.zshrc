@@ -5,7 +5,7 @@ export USER="$(id -un)"
 
 export TERM="xterm-256color"
 
-export EDITOR=micro
+[[ -n $TMUX_PATH ]] && export EDITOR=micro || export EDITOR=nano
 export ZSH="$HOME/.oh-my-config" # [REQ]
 export SD="/sdcard"
 
@@ -157,4 +157,4 @@ autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
 
-#eval $(dircolors -b $ZSH/.configs/LS_COLORS)
+eval $(dircolors -b $ZSH/.configs/LS_COLORS)
