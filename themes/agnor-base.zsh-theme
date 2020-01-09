@@ -475,7 +475,7 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 		fi
 		# start background computation
 		echo 'run'
-		prompt_agnor_async_prompt &! > "$(agnor_get_async_filename)" 2>&1
+		{ prompt_agnor_async_prompt > "$(agnor_get_async_filename)" 2>&1 }&!
 		AGNOR_ASYNC_PROC=$!
 	}
 	agnor_hook_zshexit() {
