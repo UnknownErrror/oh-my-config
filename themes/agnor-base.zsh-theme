@@ -470,10 +470,12 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	}
 }
 
-
+RPROMPT=''
 () { # Async setup
 	agnor_async_response() {
-		RPROMPT="%{%f%b%k%}$(<&$1)"
+		local RPROMPT_PREFIX='%{'$'\e[1A''%}' # one line up
+		local RPROMPT_SUFFIX='%{'$'\e[1B''%}' # one line down
+		RPROMPT="${RPROMPT_PREFIX}%{%f%b%k%}$(<&$1)${RPROMPT_SUFFIX}"
 		
 		zle -F $1
 		exec {1}<&-
@@ -486,4 +488,3 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	}
 	add-zsh-hook precmd agnor_hook_precmd_2
 }
-RPROMPT=''
