@@ -3,10 +3,6 @@ source ${0%/*}/agnor-icons.zsh
 ######################################
 ### Utilities ###
 
-AGNOR_ASYNC_PROC=0
-AGNOR_ASYNC_READY=0
-AGNOR_ASYNC_RUN=0
-
 # Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
 function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	local -a FLAGS=('--porcelain')
@@ -183,10 +179,6 @@ prompt_date() { # System date
 (( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
-	if [[ AGNOR_ASYNC_RUN -eq 0 && AGNOR_ASYNC_READY -ne 0 ]]; then
-		cat $(agnor_get_async_filename)
-		return
-	fi
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		
@@ -430,7 +422,6 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 
 
 
-
 (( $+parameters[AGNOR_DISABLE_EXTRA_SETUP] )) || AGNOR_DISABLE_EXTRA_SETUP=false
 [[ AGNOR_DISABLE_EXTRA_SETUP != true ]] && (){ # Extra setup
 	autoload -Uz add-zsh-hook
@@ -440,14 +431,6 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 		start_time=$SECONDS
 	}
 	function agnor_hook_precmd() {
-		# kill child if necessary
-		if [[ AGNOR_ASYNC_PROC -ne 0 ]]; then
-			kill -s HUP $AGNOR_ASYNC_PROC >/dev/null 2>&1 || :
-		fi
-		# start background computation
-		prompt_agnor_async_prompt &!
-		AGNOR_ASYNC_PROC=$!
-		
 		if [[ start_time -ne 0 ]]; then
 			local elapsed_time=$(( SECONDS - start_time ))
 			if [[ elapsed_time -ge 3600 ]]; then
@@ -472,49 +455,4 @@ PROMPT='%{%f%b%k%}$(build_prompt) '
 	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
 		zle && { zle reset-prompt; zle -R }
 	}
-	
-	agnor_hook_zshexit() {
-		rm -f "$(agnor_get_async_filename)" 2> /dev/null
-	}
-	
-	prompt_agnor_async_prompt() {
-		AGNOR_ASYNC_RUN=1
-		prompt_git > "$(agnor_get_async_filename)" 2>&1
-		AGNOR_ASYNC_RUN=0
-		kill -s USR1 $$ # signal parent
-	}
-	
-	add-zsh-hook zshexit agnor_hook_zshexit
-	
-	TRAPUSR1() {
-		AGNOR_ASYNC_READY=1
-		AGNOR_ASYNC_PROC=0 # reset proc number
-		zle && zle reset-prompt # reload
-		AGNOR_ASYNC_READY=0
-	}
 }
-
-
-
-
-_agkozak_branch_status() {
-	if [[ -n $branch ]]; then
-		local symbols i=1 k
-		local git_status="$(git status 2>&1)"
-		typeset -A messages=(
-			'+' 'new file: '
-			'x' 'deleted: '
-			'!' 'modified: '
-			'>' 'renamed: '
-			'?' 'Untracked files:'
-		)
-		for k in '+' 'x' '!' '>' '?'; do
-			case $git_status in
-				*${messages[$k]}*) symbols+="${AGKOZAK_CUSTOM_SYMBOLS[$i]:-$k}" ;;
-			esac
-			(( i++ ))
-		done
-		[[ -n $symbols ]] && symbols=" ${symbols}"
-	fi
-}
-
