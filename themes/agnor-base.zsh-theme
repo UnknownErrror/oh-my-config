@@ -20,6 +20,17 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	SEGMENT_SEPARATOR=$'\ue0b0'
 }
 
+typeset -a AGNOR_ASYNC_SEGMENTS=()
+function agnor_async_prompt_add_segment() {
+	AGNOR_ASYNC_SEGMENTS+=(${AGNOR_COMMAND_START} $@)
+}
+function agnor_async_prompt_start_segment() {
+	AGNOR_ASYNC_SEGMENTS+=(${AGNOR_COMMAND_START})
+}
+function agnor_async_prompt_raw_segment() {
+	AGNOR_ASYNC_SEGMENTS+=($@)
+}
+
 typeset -a AGNOR_SEGMENTS=()
 AGNOR_COMMAND_START=$'\x00'
 AGNOR_COMMAND_RAW=$'\x01'
@@ -210,125 +221,8 @@ prompt_date() { # System date
 (( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
 prompt_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
-	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
-		local dirty=$(agnor_parse_git_dirty)
-		
-		if [[ AGNOR_GIT_SHOW_SEGMENT_STASH != false ]]; then
-			local stashes=$(git stash list -n1 | wc -l)
-			if [[ stashes -ne 0 ]]; then
-				agnor_prompt_add_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
-			fi
-		fi
-		
-		local ref_symbol ref=$(git symbolic-ref HEAD 2>/dev/null)
-		if [[ -z $ref ]]; then # Branch () / detached head (➦)
-			ref=$(git rev-parse --short HEAD 2>/dev/null) || return 1
-			ref_symbol="➦"
-		else
-			ref="${ref/refs\/heads\//}"
-			ref_symbol=$'\uE0A0' #  # VCS_BRANCH_ICON
-		fi
-		
-		# local ahead behind remote="$(git rev-parse --abbrev-ref --verify @{upstream} 2>/dev/null)"
-		local ahead behind remote="$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)"
-		if [[ -n ${remote} ]]; then
-			remote="${remote/\/$ref/}"
-			ahead=$(git rev-list @{upstream}..HEAD 2>/dev/null | wc -l)
-			behind=$(git rev-list HEAD..@{upstream} 2>/dev/null | wc -l)
-		fi
-		
-		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then # [EXPERIMENT]
-			agnor_prompt_add_segment red white # diverged state
-		elif [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]]; then
-			agnor_prompt_add_segment magenta white # merge/rebase is needed
-		elif [[ -n $dirty ]]; then
-			agnor_prompt_add_segment yellow black
-		else
-			agnor_prompt_add_segment green white # black
-		fi
-		
-		agnor_prompt_raw_segment "${ref_symbol} ${ref}"
-		
-		local tag=$(git describe --exact-match --tags 2> /dev/null)
-		[[ -n $tag ]] && agnor_prompt_raw_segment " ☗ ${tag}"
-		
-		[[ ahead -ne 0 ]] && agnor_prompt_raw_segment " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		[[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]] && agnor_prompt_raw_segment " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
-		
-		[[ ! -n $dirty ]] && agnor_prompt_raw_segment " $(print_icon OK_ICON)" # ✔
-		
-		local git_dir=$(git rev-parse --git-dir 2>/dev/null)
-		if [[ -e "${git_dir}/BISECT_LOG" ]]; then # Modes
-			agnor_prompt_raw_segment " <B>"
-		elif [[ -e "${git_dir}/MERGE_HEAD" ]]; then
-			agnor_prompt_raw_segment " >M<"
-		elif [[ -e "${git_dir}/rebase" || -e "${git_dir}/../.dotest" ]]; then
-			agnor_prompt_raw_segment " >R>"
-		elif [[ -e "${git_dir}/rebase-merge" ]]; then
-			if [[ -e "${git_dir}/rebase-merge/interactive" ]]; then
-				agnor_prompt_raw_segment " >R[i]>"
-			else
-				agnor_prompt_raw_segment " >R[m]>"
-			fi
-		elif [[ -e "${git_dir}/rebase-apply" ]]; then
-			if [[ -e "${git_dir}/rebase-apply/rebasing" ]]; then
-				agnor_prompt_raw_segment " >R>"
-			elif [[ -e "${git_dir}/rebase-apply/applying" ]]; then
-				agnor_prompt_raw_segment " <A<"
-			else
-				agnor_prompt_raw_segment " <A</>R>"
-			fi
-		elif [[ -e "${git_dir}/CHERRY_PICK_HEAD" ]]; then
-			agnor_prompt_raw_segment " <C<"
-		elif [[ -e "${git_dir}/REVERT_HEAD" ]]; then
-			agnor_prompt_raw_segment " [Revert]"
-		elif local result=$(local todo; if [[ -r "${git_dir}/sequencer/todo" ]] && read todo < "${git_dir}/sequencer/todo"; then
-				case "$todo" in (p[\ \	]|pick[\ \	]*) echo -n "<C<" ;; (revert[\ \	]*) echo -n "[Revert]" ;; esac
-			fi) && [[ -n ${result} ]]; then
-			# see if a cherry-pick or revert is in progress, if the user has committed a
-			# conflict resolution with 'git commit' in the middle of a sequence of picks or
-			# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
-			agnor_prompt_raw_segment " ${result}"
-		fi
-		
-		(){
-			local porcelain=$(git status --porcelain 2> /dev/null)
-			
-			local num_untracked=$(echo $porcelain | grep -c "^??")
-			[[ num_untracked -gt 0 ]] && agnor_prompt_raw_segment " $num_untracked\u2026"
-
-			local num_added=$(echo $porcelain | grep -c "^A")
-			[[ num_added -gt 0 ]] && agnor_prompt_raw_segment " $num_added✚"
-
-			local modified num_modified=$(echo $porcelain | grep -c "^.M") num_cached_modified=$(echo $porcelain | grep -c "^M") num_cached_renamed=$(echo $porcelain | grep -c "^R")
-			[[ num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
-			[[ num_cached_modified -gt 0 || num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
-			agnor_prompt_raw_segment ${modified}
-
-			local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_cached_deleted=$(echo $porcelain | grep -c "^D")
-			[[ num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
-			[[ num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
-			agnor_prompt_raw_segment ${deleted}
-			
-			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_deleted -gt 0 ]] && agnor_prompt_raw_segment ' ⚑'
-		}
-		
-		if [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
-			if [[ $behind -ne 0 ]]; then
-				agnor_prompt_add_segment magenta white # merge/rebase is needed
-			else
-				agnor_prompt_add_segment cyan black
-			fi
-			agnor_prompt_raw_segment "\uE0A0 ${remote}" #  # VCS_BRANCH_ICON
-			[[ $behind -ne 0 ]] && agnor_prompt_raw_segment " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
-		fi
-		
-	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
-		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
-			agnor_prompt_add_segment cyan black "bare repo"
-		else
-			agnor_prompt_add_segment cyan black "GIT_DIR!"
-		fi
+	if (( $#AGNOR_ASYNC_SEGMENTS > 0)); then
+		agnor_prompt_raw_segment $AGNOR_ASYNC_SEGMENTS
 	fi
 } #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
 
@@ -530,9 +424,135 @@ function prompt-length() {
 	echo $x
 }
 
-async_fghjhgfdc() { # Async setup
+
+prompt_async_git() { # Git: branch/detached head, dirty status
+	(( $+commands[git] )) || return
+	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
+		local dirty=$(agnor_parse_git_dirty)
+		
+		if [[ AGNOR_GIT_SHOW_SEGMENT_STASH != false ]]; then
+			local stashes=$(git stash list -n1 | wc -l)
+			if [[ stashes -ne 0 ]]; then
+				agnor_async_prompt_add_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
+			fi
+		fi
+		
+		local ref_symbol ref=$(git symbolic-ref HEAD 2>/dev/null)
+		if [[ -z $ref ]]; then # Branch () / detached head (➦)
+			ref=$(git rev-parse --short HEAD 2>/dev/null) || return 1
+			ref_symbol="➦"
+		else
+			ref="${ref/refs\/heads\//}"
+			ref_symbol=$'\uE0A0' #  # VCS_BRANCH_ICON
+		fi
+		
+		# local ahead behind remote="$(git rev-parse --abbrev-ref --verify @{upstream} 2>/dev/null)"
+		local ahead behind remote="$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)"
+		if [[ -n ${remote} ]]; then
+			remote="${remote/\/$ref/}"
+			ahead=$(git rev-list @{upstream}..HEAD 2>/dev/null | wc -l)
+			behind=$(git rev-list HEAD..@{upstream} 2>/dev/null | wc -l)
+		fi
+		
+		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then # [EXPERIMENT]
+			agnor_async_prompt_add_segment red white # diverged state
+		elif [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]]; then
+			agnor_async_prompt_add_segment magenta white # merge/rebase is needed
+		elif [[ -n $dirty ]]; then
+			agnor_async_prompt_add_segment yellow black
+		else
+			agnor_async_prompt_add_segment green white # black
+		fi
+		
+		agnor_async_prompt_raw_segment "${ref_symbol} ${ref}"
+		
+		local tag=$(git describe --exact-match --tags 2> /dev/null)
+		[[ -n $tag ]] && agnor_async_prompt_raw_segment " ☗ ${tag}"
+		
+		[[ ahead -ne 0 ]] && agnor_async_prompt_raw_segment " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
+		[[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]] && agnor_async_prompt_raw_segment " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		
+		[[ ! -n $dirty ]] && agnor_async_prompt_raw_segment " $(print_icon OK_ICON)" # ✔
+		
+		local git_dir=$(git rev-parse --git-dir 2>/dev/null)
+		if [[ -e "${git_dir}/BISECT_LOG" ]]; then # Modes
+			agnor_async_prompt_raw_segment " <B>"
+		elif [[ -e "${git_dir}/MERGE_HEAD" ]]; then
+			agnor_async_prompt_raw_segment " >M<"
+		elif [[ -e "${git_dir}/rebase" || -e "${git_dir}/../.dotest" ]]; then
+			agnor_async_prompt_raw_segment " >R>"
+		elif [[ -e "${git_dir}/rebase-merge" ]]; then
+			if [[ -e "${git_dir}/rebase-merge/interactive" ]]; then
+				agnor_async_prompt_raw_segment " >R[i]>"
+			else
+				agnor_async_prompt_raw_segment " >R[m]>"
+			fi
+		elif [[ -e "${git_dir}/rebase-apply" ]]; then
+			if [[ -e "${git_dir}/rebase-apply/rebasing" ]]; then
+				agnor_async_prompt_raw_segment " >R>"
+			elif [[ -e "${git_dir}/rebase-apply/applying" ]]; then
+				agnor_async_prompt_raw_segment " <A<"
+			else
+				agnor_async_prompt_raw_segment " <A</>R>"
+			fi
+		elif [[ -e "${git_dir}/CHERRY_PICK_HEAD" ]]; then
+			agnor_async_prompt_raw_segment " <C<"
+		elif [[ -e "${git_dir}/REVERT_HEAD" ]]; then
+			agnor_async_prompt_raw_segment " [Revert]"
+		elif local result=$(local todo; if [[ -r "${git_dir}/sequencer/todo" ]] && read todo < "${git_dir}/sequencer/todo"; then
+				case "$todo" in (p[\ \	]|pick[\ \	]*) echo -n "<C<" ;; (revert[\ \	]*) echo -n "[Revert]" ;; esac
+			fi) && [[ -n ${result} ]]; then
+			# see if a cherry-pick or revert is in progress, if the user has committed a
+			# conflict resolution with 'git commit' in the middle of a sequence of picks or
+			# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
+			agnor_async_prompt_raw_segment " ${result}"
+		fi
+		
+		(){
+			local porcelain=$(git status --porcelain 2> /dev/null)
+			
+			local num_untracked=$(echo $porcelain | grep -c "^??")
+			[[ num_untracked -gt 0 ]] && agnor_async_prompt_raw_segment " $num_untracked\u2026"
+
+			local num_added=$(echo $porcelain | grep -c "^A")
+			[[ num_added -gt 0 ]] && agnor_async_prompt_raw_segment " $num_added✚"
+
+			local modified num_modified=$(echo $porcelain | grep -c "^.M") num_cached_modified=$(echo $porcelain | grep -c "^M") num_cached_renamed=$(echo $porcelain | grep -c "^R")
+			[[ num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
+			[[ num_cached_modified -gt 0 || num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
+			agnor_async_prompt_raw_segment ${modified}
+
+			local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_cached_deleted=$(echo $porcelain | grep -c "^D")
+			[[ num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
+			[[ num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
+			agnor_async_prompt_raw_segment ${deleted}
+			
+			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_deleted -gt 0 ]] && agnor_async_prompt_raw_segment ' ⚑'
+		}
+		
+		if [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
+			if [[ $behind -ne 0 ]]; then
+				agnor_async_prompt_add_segment magenta white # merge/rebase is needed
+			else
+				agnor_async_prompt_add_segment cyan black
+			fi
+			agnor_async_prompt_raw_segment "\uE0A0 ${remote}" #  # VCS_BRANCH_ICON
+			[[ $behind -ne 0 ]] && agnor_async_prompt_raw_segment " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		fi
+		
+	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
+		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
+			agnor_prompt_add_segment cyan black "bare repo"
+		else
+			agnor_prompt_add_segment cyan black "GIT_DIR!"
+		fi
+	fi
+} #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
+
+() { # Async setup
 	agnor_async_response() {
 		GIT_ASYNC_DATA="$(<&$1)"
+		echo $GIT_ASYNC_DATA > $TTY
 		zle && zle reset-prompt
 		GIT_ASYNC_DATA=''
 		
@@ -540,12 +560,11 @@ async_fghjhgfdc() { # Async setup
 		exec {1}<&-
 	}
 	agnor_hook_precmd_2() {
-		PROMPT="waiting..."
+		AGNOR_ASYNC_SEGMENTS=()
 		exec {FD}< <(
-			AGNOR_ASYNC_RUN=1
-			prompt_git
-			AGNOR_ASYNC_RUN=0
+			prompt_async_git
 		)
+		echo $FD > $TTY
 		zle -F $FD agnor_async_response
 	}
 	add-zsh-hook precmd agnor_hook_precmd_2
