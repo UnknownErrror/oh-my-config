@@ -460,7 +460,7 @@ function build_prompt() {
 	agnor_prompt_segments
 }
 
-(){ # Setup
+function agnor_setup(){ # Setup
 	autoload -Uz add-zsh-hook
 	AGNOR_ASYNC_GIT_NEEDED=${AGNOR_ASYNC_GIT_NEEDED:-true}
 	AGNOR_GIT_SHOW_SEGMENT_REMOTE=${AGNOR_GIT_SHOW_SEGMENT_REMOTE:-true}
@@ -536,6 +536,8 @@ function build_prompt() {
 	
 	PROMPT='%{%f%b%k%}$(build_prompt) '
 }
+
+agnor_setup "$@"
 
 function set-prompt() {
 	local top_left='%~'
