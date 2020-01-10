@@ -34,32 +34,40 @@ SEGMENT_SEPARATOR=$'\ue0b0'
 
 # ${${(P)${(P)AGNOR_SEGMENTS[i]}[1]}}
 
-typeset -a AGNOR_SEGMENTS=()
+typeset -ag AGNOR_SEGMENTS=()
 CURRENT_BG='NONE'
 prompt_segments() {
 	emulate -L zsh
+	echo 'redraw' >> $TTY
 	local NUL=$'\0'
 	local bg fg SEGMENT LAST=$NUL
 	
-	for (( i = 1; i <= ${#AGNOR_SEGMENTS[@]}; i++ )); do
+	for (( i = 1; i <= $#AGNOR_SEGMENTS; i++ )); do
 		SEGMENT=$AGNOR_SEGMENTS[$i]
 		
-		if [[ $SEGMENT == $NUL || $SEGMENT == $'\x01' || $SEGMENT == $'\x02' ]]; then
+		if [[ $SEGMENT == $NUL ]]; then
 			LAST=$SEGMENT
 			
-		elif [[ $LAST == 'content' || $LAST == $'\x01' ]]; then
-			echo -n ${SEGMENT}
+		elif [[ $SEGMENT == $'\x01' ]]; then
+			LAST=$SEGMENT
 			
-		elif [[ $LAST == $'\x02' ]]; then
-			if [[ -n "$CURRENT_BG" ]]; then
-				echo -n " %{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
+		elif [[ $SEGMENT == $'\x02' ]]; then
+			LAST=$SEGMENT
+			if [[ $CURRENT_BG != 'NONE' ]]; then
+				echo -n " %k%F{$CURRENT_BG}$SEGMENT_SEPARATOR"
 			else
-				echo -n "%{%k%}"
+				echo -n "%k"
 			fi
-			echo -n "%{%f%}"
+			echo -n "%f"
 			
 			CURRENT_BG='NONE'
 			#LAST='\0'
+			
+		elif [[ $LAST == 'content' ]]; then
+			echo -n ${SEGMENT}
+			
+		elif [[ $LAST == $'\x01' ]]; then
+			echo -n ${SEGMENT}
 			
 		elif [[ $LAST == $NUL ]]; then
 			bg=${SEGMENT}
@@ -71,43 +79,41 @@ prompt_segments() {
 			
 		elif [[ $LAST == 'fg' ]]; then
 			if [[ $CURRENT_BG != 'NONE' && $CURRENT_BG != $1 ]]; then
-				echo -n " %{%K{$bg}%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{%F{$fg}%} "
+				echo -n " %K{$bg}%F{$CURRENT_BG}$SEGMENT_SEPARATOR%F{$fg} "
 			else
-				echo -n "%{%K{$bg}%}%{%F{$fg{%} "
+				echo -n "%K{$bg}%F{$fg} "
 			fi
 			CURRENT_BG=$bg
 			echo -n ${SEGMENT}
+			
 			LAST='content'
 			
 		else
-			echo -n ':fail:'
+			echo -n 'fail:'
 		fi
 	done
+	echo $AGNOR_SEGMENTS
 	
 	if [[ $CURRENT_BG != 'NONE' ]]; then
-		echo -n " %{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
+		echo -n " %k%F{$CURRENT_BG}$SEGMENT_SEPARATOR"
 	else
-		echo -n "%{%k%}"
+		echo -n "%k"
 	fi
-	echo -n "%{%f%}"
+	echo -n "%f"
 	CURRENT_BG='NONE'
 }
-prompt_add_full_segment() {
-	AGNOR_SEGMENTS+=($'\0' $@)
-}
+
 prompt_add_segment() {
 	AGNOR_SEGMENTS+=($'\0' $@)
 }
 
-prompt_print_segment() {
-	AGNOR_SEGMENTS+=($@)
-}
 prompt_start_segment() {
 	AGNOR_SEGMENTS+=($'\0')
 }
-prompt_end_segment() {
-	AGNOR_SEGMENTS+=()
+prompt_print_segment() {
+	AGNOR_SEGMENTS+=($@)
 }
+
 
 ######################################
 ### Prompt components ###
@@ -144,25 +150,25 @@ prompt_retval_status() { # Return Value: (✘ <codes> / ✘ <code> / ✘ SIG<sig
 	result="${pre_result}"
 
 	if (( code_sum > 0 )); then
-		prompt_add_full_segment red white "$(print_icon FAIL_ICON) ${result}"
+		prompt_add_segment red white "$(print_icon FAIL_ICON) ${result}"
 	else
-		prompt_add_full_segment green white "$(print_icon OK_ICON)"
+		prompt_add_segment green white "$(print_icon OK_ICON)"
 	fi
 }
 prompt_retval_status_lite() { # Return Value (Lite): (✘ <code> / ✘ SIG<sig>(<code>) / ✔)
 	if (( RETVAL > 0 )); then
-		prompt_add_full_segment red white "$(print_icon FAIL_ICON) $(normalize_exit_status "${RETVAL}")"
+		prompt_add_segment red white "$(print_icon FAIL_ICON) $(normalize_exit_status "${RETVAL}")"
 	else
-		prompt_add_full_segment green white "$(print_icon OK_ICON)"
+		prompt_add_segment green white "$(print_icon OK_ICON)"
 	fi
 }
 
 
 prompt_root_status() { # Status of root: (⚡ / )
 	if [[ ${(%):-%#} == '#' ]]; then
-		prompt_add_full_segment black yellow "$(print_icon ROOT_ICON)"
+		prompt_add_segment black yellow "$(print_icon ROOT_ICON)"
 	elif [[ -n $SUDO_COMMAND ]]; then
-		prompt_add_full_segment black yellow "$(print_icon SUDO_ICON)"
+		prompt_add_segment black yellow "$(print_icon SUDO_ICON)"
 	fi
 }
 prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
@@ -174,30 +180,30 @@ prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
 	if [[ jobs_count -gt 0 ]]; then
 		local icon="$(print_icon BACKGROUND_JOBS_ICON)"
 		if [[ jobs_count -gt 1 ]]; then
-			prompt_add_full_segment cyan white "${icon} ${jobs_count}"
+			prompt_add_segment cyan white "${icon} ${jobs_count}"
 		else
-			prompt_add_full_segment cyan white "${icon}"
+			prompt_add_segment cyan white "${icon}"
 		fi
 	fi
 }
 
 prompt_context() { # Context: ((ssh) <user>@<hostname> / (screen) <user>@<hostname> / (tmux) <user>@<hostname> / <user>@<hostname>)
 	local shell_deep=${(%):-%L}
-	[[ shell_deep -gt 1 ]] && prompt_add_full_segment black default "${shell_deep}"
+	[[ shell_deep -gt 1 ]] && prompt_add_segment black default "${shell_deep}"
 	
 	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
-		prompt_add_full_segment black yellow "(ssh) %(!..%{%F{default}%})${USER}@%m"
+		prompt_add_segment black yellow "(ssh) %(!..%{%F{default}%})${USER}@%m"
 	elif [[ -n $STY ]]; then
-		prompt_add_full_segment black white "(screen) %(!.%{%F{yellow}%}.)${USER}@%m"
+		prompt_add_segment black white "(screen) %(!.%{%F{yellow}%}.)${USER}@%m"
 	elif [[ -n $TMUX ]]; then
 		local session_name="$(tmux display-message -p '#S')"
 		if [[ -n $session_name ]]; then
-			prompt_add_full_segment black magenta "(tmux@${session_name}) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
+			prompt_add_segment black magenta "(tmux@${session_name}) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
 		else
-			prompt_add_full_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
+			prompt_add_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
 		fi
 	elif [[ $USER != $DEFAULT_USER ]]; then
-		prompt_add_full_segment black white "%(!.%{%F{yellow}%}.)${USER}@%m"
+		prompt_add_segment black white "%(!.%{%F{yellow}%}.)${USER}@%m"
 	fi
 }
 
@@ -216,24 +222,24 @@ prompt_dir() { # Dir: ( / WO) + (PWD)
 	else
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	prompt_add_full_segment blue white "${icon}%~"
+	prompt_add_segment blue white "${icon}%~"
 }
 prompt_dir_lite() { # Dir (Lite): () + (PWD)
 	local icon
 	if [[ ! -w "$PWD" ]]; then
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	prompt_add_full_segment blue white "${icon}%~"
+	prompt_add_segment blue white "${icon}%~"
 }
 prompt_dir_simple() { # Dir (Simple): (PWD)
-	prompt_add_full_segment blue white "%~"
+	prompt_add_segment blue white "%~"
 }
 
 prompt_time() { # System time
-	prompt_add_full_segment black default "$(primt_icon TIME_ICON) %D{%H:%M:%S}"
+	prompt_add_segment black default "$(primt_icon TIME_ICON) %D{%H:%M:%S}"
 }
 prompt_date() { # System date
-	prompt_add_full_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
+	prompt_add_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
 
 
@@ -248,7 +254,7 @@ prompt_git() { # Git: branch/detached head, dirty status
 			# local stashes=$(git stash list | wc -l)
 			local stashes=$(git stash list -n1 | wc -l)
 			if [[ stashes -ne 0 ]]; then
-				prompt_add_full_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
+				prompt_add_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
 			fi
 		fi
 		
@@ -344,12 +350,12 @@ prompt_git() { # Git: branch/detached head, dirty status
 			
 			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_deleted -gt 0 ]] && prompt_print_segment ' ⚑'
 		}
-		prompt_end_segment
+		
 		if [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
-				prompt_add_full_segment magenta white # merge/rebase is needed
+				prompt_add_segment magenta white # merge/rebase is needed
 			else
-				prompt_add_full_segment cyan black
+				prompt_add_segment cyan black
 			fi
 			prompt_print_segment "\uE0A0 ${remote}" #  # VCS_BRANCH_ICON
 			[[ $behind -ne 0 ]] && prompt_print_segment " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
@@ -357,9 +363,9 @@ prompt_git() { # Git: branch/detached head, dirty status
 		
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
-			prompt_add_full_segment cyan black "bare repo"
+			prompt_add_segment cyan black "bare repo"
 		else
-			prompt_add_full_segment cyan black "GIT_DIR!"
+			prompt_add_segment cyan black "GIT_DIR!"
 		fi
 	fi
 } #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
@@ -395,7 +401,7 @@ prompt_git_remote() {
 		remote_status="--"
 	fi
 
-	prompt_add_full_segment cyan $fg "⏏ $remote $remote_status"
+	prompt_add_segment cyan $fg "⏏ $remote $remote_status"
 }
 
 # Git statuses:
@@ -414,12 +420,12 @@ prompt_bzr() { # [-] Bzr
 	if ( bzr status >/dev/null 2>&1 ); then
 		local revision=`bzr log | head -n2 | tail -n1 | sed 's/^revno: //'`
 		if [[ $(bzr status | head -n1 | grep "modified" | wc -m) -gt 0 ]] ; then
-			prompt_add_full_segment yellow black "bzr@$revision ✚ "
+			prompt_add_segment yellow black "bzr@$revision ✚ "
 		else
 			if [[ $(bzr status | head -n1 | wc -m) -gt 0 ]] ; then
-				prompt_add_full_segment yellow black "bzr@$revision"
+				prompt_add_segment yellow black "bzr@$revision"
 			else
-				prompt_add_full_segment green black "bzr@$revision"
+				prompt_add_segment green black "bzr@$revision"
 			fi
 		fi
 	fi
@@ -430,13 +436,13 @@ prompt_hg() {  # [-] Mercurial
 		local rev status branch
 		if $(hg prompt >/dev/null 2>&1); then
 			if [[ $(hg prompt "{status|unknown}") = "?" ]]; then # files are not added
-				prompt_add_full_segment red white
+				prompt_add_segment red white
 				status='±'
 			elif [[ -n $(hg prompt "{status|modified}") ]]; then # any modification
-				prompt_add_full_segment yellow black
+				prompt_add_segment yellow black
 				status='±'
 			else # working copy is clean
-				prompt_add_full_segment green black
+				prompt_add_segment green black
 			fi
 			# $'\u263F' # ☿ # VCS_BOOKMARK_ICON
 			prompt_print_segment $(hg prompt "☿ {rev}@{branch}") $status
@@ -445,13 +451,13 @@ prompt_hg() {  # [-] Mercurial
 			rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
 			branch=$(hg id -b 2>/dev/null)
 			if $(hg st | grep -q "^\?"); then
-				prompt_add_full_segment red black
+				prompt_add_segment red black
 				status='±'
 			elif $(hg st | grep -q "^[MA]"); then
-				prompt_add_full_segment yellow black
+				prompt_add_segment yellow black
 				status='±'
 			else
-				prompt_add_full_segment green black
+				prompt_add_segment green black
 			fi
 			prompt_print_segment "☿ $rev@$branch $status"
 		fi
@@ -470,10 +476,11 @@ prompt_shell_chars() { # ($ / #) ❯
 	prompt_print_segment ' %(!.#.$) ❯'
 }
 
-
 build_prompt() {
 	RETVAL=$?
 	RETVALS=( "$pipestatus[@]" )
+	echo 'build' >> $TTY
+	AGNOR_SEGMENTS=()
 	
 	prompt_retval_status
 	prompt_root_status
@@ -490,7 +497,9 @@ build_prompt() {
 	
 	prompt_shell_chars
 	
-	prompt_segments
+	local res=$(prompt_segments)
+	echo "$res" >> $TTY
+	echo -n $res
 }
 PROMPT='%{%f%b%k%}$(build_prompt) '
 
