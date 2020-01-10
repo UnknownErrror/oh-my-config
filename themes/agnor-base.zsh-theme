@@ -552,7 +552,8 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 () { # Async setup
 	agnor_async_response() {
 		GIT_ASYNC_DATA="$(<&$1)"
-		echo $GIT_ASYNC_DATA > $TTY
+		echo 'DATA' $GIT_ASYNC_DATA >/dev/tty1
+		echo 'SEG' $AGNOR_ASYNC_SEGMENTS >/dev/tty1
 		zle && zle reset-prompt
 		GIT_ASYNC_DATA=''
 		
@@ -564,7 +565,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		exec {FD}< <(
 			prompt_async_git
 		)
-		echo $FD > $TTY
+		echo 'FD' $FD >/dev/tty1
 		zle -F $FD agnor_async_response
 	}
 	add-zsh-hook precmd agnor_hook_precmd_2
