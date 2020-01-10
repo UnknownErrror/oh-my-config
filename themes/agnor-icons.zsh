@@ -1,5 +1,5 @@
 () {
-	FONT_MODE=${FONT_MODE:-pwl} # Default: powerline
+	FONT_MODE=${FONT_MODE:-nerdfont} # Default: nerdfont
 	typeset -gAH agnor_icons
 	local LC_ALL='' LC_CTYPE='en_US.UTF-8' # Set the right locale to protect special characters
 	case $FONT_MODE in
