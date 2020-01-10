@@ -558,7 +558,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 } #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
 
 () { # Async setup
-	local FD
+	local FDD
 	agnor_async_response() {
 		local ASYNC_DATA="$(<&$1)"
 		AGNOR_ASYNC_SEGMENTS=("${(f)ASYNC_DATA}")
@@ -568,12 +568,12 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		exec {1}<&-
 	}
 	agnor_hook_precmd_2() {
-		[[ -n $FD ]] && zle -F $FD 2>/dev/null
+		[[ -n $FDD ]] && zle -F $FDD 2>/dev/null
 		AGNOR_ASYNC_SEGMENTS=()
-		exec {FD}< <(
+		exec {FDD}< <(
 			prompt_async_git
 		)
-		zle -F $FD agnor_async_response
+		zle -F $FDD agnor_async_response
 	}
 	add-zsh-hook precmd agnor_hook_precmd_2
 }
