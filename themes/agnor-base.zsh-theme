@@ -22,19 +22,27 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 
 typeset -a AGNOR_ASYNC_SEGMENTS=()
 function agnor_async_prompt_add_segment() {
-	AGNOR_ASYNC_SEGMENTS+=(${AGNOR_COMMAND_START} $@)
+	emulate -L zsh
+	echo "${AGNOR_COMMAND_START}"
+	for (( i = 1; i <= $#; i++ )); do
+		echo $@[$i]
+	done
 }
 function agnor_async_prompt_start_segment() {
-	AGNOR_ASYNC_SEGMENTS+=(${AGNOR_COMMAND_START})
+	echo "${AGNOR_COMMAND_START}"
 }
 function agnor_async_prompt_raw_segment() {
-	AGNOR_ASYNC_SEGMENTS+=($@)
+	emulate -L zsh
+	for (( i = 1; i <= $#; i++ )); do
+		echo $@[$i]
+	done
 }
 
 typeset -a AGNOR_SEGMENTS=()
 AGNOR_COMMAND_START=$'\x00'
 AGNOR_COMMAND_RAW=$'\x01'
 AGNOR_COMMAND_NL=$'\x03'
+AGNOR_SUBCOMMAND_DELIM=$'\n'
 
 function agnor_prompt_segments() {
 	emulate -L zsh
@@ -550,22 +558,21 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 } #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
 
 () { # Async setup
+	local FD
 	agnor_async_response() {
-		GIT_ASYNC_DATA="$(<&$1)"
-		echo 'DATA' $GIT_ASYNC_DATA >/dev/tty1
-		echo 'SEG' $AGNOR_ASYNC_SEGMENTS >/dev/tty1
+		local ASYNC_DATA="$(<&$1)"
+		AGNOR_ASYNC_SEGMENTS=("${(f)ASYNC_DATA}")
 		zle && zle reset-prompt
-		GIT_ASYNC_DATA=''
 		
 		zle -F $1
 		exec {1}<&-
 	}
 	agnor_hook_precmd_2() {
+		[[ -n $FD ]] && zle -F $FD 2>/dev/null
 		AGNOR_ASYNC_SEGMENTS=()
 		exec {FD}< <(
 			prompt_async_git
 		)
-		echo 'FD' $FD >/dev/tty1
 		zle -F $FD agnor_async_response
 	}
 	add-zsh-hook precmd agnor_hook_precmd_2
