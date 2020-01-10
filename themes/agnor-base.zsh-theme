@@ -1,6 +1,16 @@
 source ${0%/*}/agnor-icons.zsh
 
 ######################################
+### Variables ###
+
+AGNOR_SEGMENTS=()
+AGNOR_COMMAND_START=$'\x00'
+AGNOR_COMMAND_RAW=$'\x01'
+AGNOR_COMMAND_NL=$'\x03'
+
+AGNOR_ASYNC_SEGMENTS=()
+
+######################################
 ### Utilities ###
 
 # Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
@@ -11,6 +21,32 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	[[ -n $(git status ${FLAGS} 2>/dev/null) ]] && echo '*'
 }
 
+function agnor_prompt_add_segment() {
+	AGNOR_SEGMENTS+=($AGNOR_COMMAND_START $@)
+}
+function agnor_prompt_start_segment() {
+	AGNOR_SEGMENTS+=($AGNOR_COMMAND_START)
+}
+function agnor_prompt_raw_segment() {
+	AGNOR_SEGMENTS+=($@)
+}
+
+function agnor_async_prompt_add_segment() {
+	emulate -L zsh
+	echo "$AGNOR_COMMAND_START"
+	for (( i = 1; i <= $#; i++ )); do
+		echo $@[$i]
+	done
+}
+function agnor_async_prompt_start_segment() {
+	echo "$AGNOR_COMMAND_START"
+}
+function agnor_async_prompt_raw_segment() {
+	emulate -L zsh
+	for (( i = 1; i <= $#; i++ )); do
+		echo $@[$i]
+	done
+}
 
 ######################################
 ### Segment drawing ###
@@ -20,14 +56,9 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	SEGMENT_SEPARATOR=$'\ue0b0'
 }
 
-typeset -a AGNOR_SEGMENTS=()
-AGNOR_COMMAND_START=$'\x00'
-AGNOR_COMMAND_RAW=$'\x01'
-AGNOR_COMMAND_NL=$'\x03'
-
 function agnor_prompt_segments() {
 	emulate -L zsh
-	local bg fg COMMAND CURRENT_BG='NONE' STATE=$AGNOR_COMMAND_START
+	local BG FG STATE COMMAND CURRENT_BG='NONE'
 	
 	for (( i = 1; i <= $#AGNOR_SEGMENTS; i++ )); do
 		COMMAND=$AGNOR_SEGMENTS[$i]
@@ -38,7 +69,7 @@ function agnor_prompt_segments() {
 			STATE='content'
 		elif [[ $COMMAND == $AGNOR_COMMAND_NL ]]; then
 			if [[ $CURRENT_BG != 'NONE' ]]; then
-				echo -n " %{%K{008}%F{$CURRENT_BG}%}%}$SEGMENT_SEPARATOR"
+				echo -n " %{%K{008}%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
 			else
 				echo -n "%{%K{008}%}"
 			fi
@@ -48,19 +79,19 @@ function agnor_prompt_segments() {
 			echo -n ${COMMAND}
 			
 		elif [[ $STATE == 'start' ]]; then
-			bg=${COMMAND}
+			BG=${COMMAND}
 			STATE='bg'
 		elif [[ $STATE == 'bg' ]]; then
-			fg=${COMMAND}
+			FG=${COMMAND}
 			STATE='fg'
 		elif [[ $STATE == 'fg' ]]; then
-			if [[ $CURRENT_BG != 'NONE' && $CURRENT_BG != $1 ]]; then
-				echo -n " %{%K{$bg}%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{%F{$fg}%} "
+			if [[ $CURRENT_BG != 'NONE' && $CURRENT_BG != $BG ]]; then
+				echo -n " %{%K{$BG}%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{%F{$FG}%} "
 			else
-				echo -n "%{%K{$bg}%F{$fg}%} "
+				echo -n "%{%K{$BG}%F{$FG}%} "
 			fi
 			echo -n ${COMMAND}
-			CURRENT_BG=$bg
+			CURRENT_BG=$BG
 			STATE='content'
 		fi
 	done
@@ -72,17 +103,6 @@ function agnor_prompt_segments() {
 	fi
 	echo -n "%{%f%}"
 }
-
-function agnor_prompt_add_segment() {
-	AGNOR_SEGMENTS+=(${AGNOR_COMMAND_START} $@)
-}
-function agnor_prompt_start_segment() {
-	AGNOR_SEGMENTS+=(${AGNOR_COMMAND_START})
-}
-function agnor_prompt_raw_segment() {
-	AGNOR_SEGMENTS+=($@)
-}
-
 
 ######################################
 ### Prompt components ###
@@ -205,18 +225,17 @@ prompt_date() { # System date
 	agnor_prompt_add_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
 
-prompt_git() { # [WRAP] Git: branch/detached head, dirty status
-	(( $+commands[git] )) || return
+prompt_async() { # Prompt all async data
 	if (( $#AGNOR_ASYNC_SEGMENTS > 0 )); then
 		agnor_prompt_raw_segment $AGNOR_ASYNC_SEGMENTS
 	fi
 }
 
 prompt_newline() {
-	agnor_prompt_raw_segment ${AGNOR_COMMAND_NL}
+	agnor_prompt_raw_segment $AGNOR_COMMAND_NL
 }
 prompt_shell_chars() { # ($ / #) ❯
-	agnor_prompt_raw_segment ${AGNOR_COMMAND_RAW}
+	agnor_prompt_raw_segment $AGNOR_COMMAND_RAW
 	agnor_prompt_raw_segment ' %(!.#.$) ❯'
 }
 
@@ -387,14 +406,14 @@ prompt_git_remote() {
 
 	agnor_prompt_add_segment cyan $fg "⏏ $remote $remote_status"
 }
-prompt_bzr() { # [-] Bzr
+prompt_async_bzr() { # [-] Bzr
 	(( $+commands[bzr] )) || return
 	if ( bzr status >/dev/null 2>&1 ); then
 		local revision=`bzr log | head -n2 | tail -n1 | sed 's/^revno: //'`
-		if [[ $(bzr status | head -n1 | grep "modified" | wc -m) -gt 0 ]] ; then
+		if (( $(bzr status | head -n1 | grep "modified" | wc -m) > 0 )); then
 			agnor_prompt_add_segment yellow black "bzr@$revision ✚ "
 		else
-			if [[ $(bzr status | head -n1 | wc -m) -gt 0 ]] ; then
+			if (( $(bzr status | head -n1 | wc -m) > 0 )); then
 				agnor_prompt_add_segment yellow black "bzr@$revision"
 			else
 				agnor_prompt_add_segment green black "bzr@$revision"
@@ -450,11 +469,11 @@ function build_prompt() {
 	prompt_context
 	
 	prompt_dir
-	prompt_git
-	# prompt_bzr
-	# prompt_hg
-	prompt_newline
+	prompt_async # GIT
+	prompt_async_bzr
+	prompt_hg
 	
+	prompt_newline
 	prompt_shell_chars
 	
 	agnor_prompt_segments
@@ -462,27 +481,10 @@ function build_prompt() {
 
 function agnor_setup(){ # Setup
 	autoload -Uz add-zsh-hook
-	AGNOR_ASYNC_GIT_NEEDED=${AGNOR_ASYNC_GIT_NEEDED:-true}
+	AGNOR_ASYNC_NEEDED=${AGNOR_ASYNC_NEEDED:-true}
 	AGNOR_GIT_SHOW_SEGMENT_REMOTE=${AGNOR_GIT_SHOW_SEGMENT_REMOTE:-true}
 	AGNOR_GIT_SHOW_SEGMENT_STASH=${AGNOR_GIT_SHOW_SEGMENT_STASH:-true}
 	
-	AGNOR_ASYNC_SEGMENTS=()
-	function agnor_async_prompt_add_segment() {
-		emulate -L zsh
-		echo "${AGNOR_COMMAND_START}"
-		for (( i = 1; i <= $#; i++ )); do
-			echo $@[$i]
-		done
-	}
-	function agnor_async_prompt_start_segment() {
-		echo "${AGNOR_COMMAND_START}"
-	}
-	function agnor_async_prompt_raw_segment() {
-		emulate -L zsh
-		for (( i = 1; i <= $#; i++ )); do
-			echo $@[$i]
-		done
-	}
 	function agnor_async_response() {
 		local ASYNC_DATA="$(<&$1)"
 		if [[ -n $ASYNC_DATA ]]; then
@@ -499,9 +501,9 @@ function agnor_setup(){ # Setup
 	}
 	function agnor_hook_precmd() {
 		# Async
-		if [[ $AGNOR_ASYNC_GIT_NEEDED == true ]]; then
+		AGNOR_ASYNC_SEGMENTS=()
+		if [[ $AGNOR_ASYNC_NEEDED == true ]]; then
 			[[ -n $AGNOR_ASYNC_FD ]] && zle -F $AGNOR_ASYNC_FD 2>/dev/null
-			AGNOR_ASYNC_SEGMENTS=()
 			exec {AGNOR_ASYNC_FD}< <(
 				prompt_async_git
 			)
