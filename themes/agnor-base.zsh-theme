@@ -406,51 +406,51 @@ prompt_git_remote() {
 
 	agnor_prompt_add_segment cyan $fg "⏏ $remote $remote_status"
 }
-prompt_async_bzr() { # [-] Bzr
+prompt_async_bzr() { # Bzr: (bzr@<revision> ✚)
 	(( $+commands[bzr] )) || return
-	if ( bzr status >/dev/null 2>&1 ); then
-		local revision=`bzr log | head -n2 | tail -n1 | sed 's/^revno: //'`
-		if (( $(bzr status | head -n1 | grep "modified" | wc -m) > 0 )); then
-			agnor_prompt_add_segment yellow black "bzr@$revision ✚ "
+	if ( bzr status -q >/dev/null 2>&1 ); then
+		# local revision=$(bzr log | head -n2 | tail -n1 | sed 's/^revno: //')
+		#[[ -z $revision ]] && revision='0'
+		local revision=$(bzr revno)
+		local bzr_status=$(bzr status | head -n1)
+		if (( $(echo $bzr_status | grep "modified" | wc -m) > 0 )); then
+			agnor_async_prompt_add_segment yellow black "bzr@${revision} ✚"
+		elif (( $(echo $bzr_status | wc -m) > 0 )); then
+			agnor_async_prompt_add_segment yellow black "bzr@${revision}"
 		else
-			if (( $(bzr status | head -n1 | wc -m) > 0 )); then
-				agnor_prompt_add_segment yellow black "bzr@$revision"
-			else
-				agnor_prompt_add_segment green black "bzr@$revision"
-			fi
+			agnor_async_prompt_add_segment green white "bzr@${revision}"
 		fi
 	fi
 }
-prompt_hg() {  # [-] Mercurial
+prompt_async_hg() { # Mercurial: (☿ <revision>@<branch> ±)
 	(( $+commands[hg] )) || return
-	if $(hg id >/dev/null 2>&1); then
-		local rev status branch
-		if $(hg prompt >/dev/null 2>&1); then
-			if [[ $(hg prompt "{status|unknown}") = "?" ]]; then # files are not added
-				agnor_prompt_add_segment red white
-				status='±'
+	if ( hg id >/dev/null 2>&1 ); then
+		local dirty
+		if ( hg prompt >/dev/null 2>&1 ); then
+			if [[ $(hg prompt "{status|unknown}") == "?" ]]; then # files are not added
+				agnor_async_prompt_add_segment red white
+				dirty='±'
 			elif [[ -n $(hg prompt "{status|modified}") ]]; then # any modification
-				agnor_prompt_add_segment yellow black
-				status='±'
+				agnor_async_prompt_add_segment yellow black
+				dirty='±'
 			else # working copy is clean
-				agnor_prompt_add_segment green black
+				agnor_async_prompt_add_segment green white
 			fi
 			# $'\u263F' # ☿ # VCS_BOOKMARK_ICON
-			agnor_prompt_raw_segment $(hg prompt "☿ {rev}@{branch}") $status
+			agnor_async_prompt_raw_segment $(hg prompt "☿ {rev}@{branch}") $dirty
 		else
-			status=""
-			rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
-			branch=$(hg id -b 2>/dev/null)
-			if $(hg st | grep -q "^\?"); then
-				agnor_prompt_add_segment red black
-				status='±'
-			elif $(hg st | grep -q "^[MA]"); then
-				agnor_prompt_add_segment yellow black
-				status='±'
+			local rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
+			local branch=$(hg id -b 2>/dev/null)
+			if $(hg st | grep -q "^\?"); then # files are not added
+				agnor_async_prompt_add_segment red white
+				dirty='±'
+			elif $(hg st | grep -q "^[MA]"); then # any modification
+				agnor_async_prompt_add_segment yellow black
+				dirty='±'
 			else
-				agnor_prompt_add_segment green black
+				agnor_async_prompt_add_segment green white
 			fi
-			agnor_prompt_raw_segment "☿ $rev@$branch $status"
+			agnor_async_prompt_raw_segment "☿ ${rev}@${branch} ${dirty}"
 		fi
 	fi
 }
@@ -470,8 +470,6 @@ function build_prompt() {
 	
 	prompt_dir
 	prompt_async # GIT
-	prompt_async_bzr
-	prompt_hg
 	
 	prompt_newline
 	prompt_shell_chars
