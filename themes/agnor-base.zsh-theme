@@ -212,101 +212,6 @@ prompt_git() { # [WRAP] Git: branch/detached head, dirty status
 	fi
 }
 
-prompt_git_remotes() {
-	eval "remotes=(`git remote | sed 's/\n/ /'`)"
-	for remote in $remotes; do
-		prompt_git_remote $remote
-	done
-}
-prompt_git_remote() {
-	local remote_status
-	local remote=${1:-"origin"}
-	local fg=black
-	local current_branch=${$(git rev-parse --abbrev-ref HEAD)}
-	local remote_path=${$(git rev-parse --verify remotes\/${remote}\/${current_branch} --symbolic-full-name 2> /dev/null)}
-
-	if [[ -n ${remote_path} ]] ; then
-		local ahead=$(git rev-list ${remote_path}..HEAD 2> /dev/null | wc -l | tr -d ' ')
-		local behind=$(git rev-list HEAD..${remote_path} 2> /dev/null | wc -l | tr -d ' ')
-
-		if [[ ahead -eq 0 && behind -eq 0 ]] ; then
-			remote_status="○ "
-		else
-			if [[ behind -gt 0 ]] ; then
-				fg=red
-			elif [[ ahead -gt 0 ]] ; then
-				fg=yellow
-			fi
-			remote_status="+${ahead} -${behind}"
-		fi
-	else
-		remote_status="--"
-	fi
-
-	agnor_prompt_add_segment cyan $fg "⏏ $remote $remote_status"
-}
-
-# Git statuses:
-# - Branch () or detached head (➦)
-# - Dirty working directory state (orange (dirty) / green (✔))
-# - Current branch / SHA1 in detached head state
-# - Remote branch name (if you're tracking a remote branch)
-# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
-# - Stashes count
-# - <B> - Bisect state on the current branch
-# - >M< - Merge state on the current branch
-# - >R> - Rebase state on the current branch
-
-prompt_bzr() { # [-] Bzr
-	(( $+commands[bzr] )) || return
-	if ( bzr status >/dev/null 2>&1 ); then
-		local revision=`bzr log | head -n2 | tail -n1 | sed 's/^revno: //'`
-		if [[ $(bzr status | head -n1 | grep "modified" | wc -m) -gt 0 ]] ; then
-			agnor_prompt_add_segment yellow black "bzr@$revision ✚ "
-		else
-			if [[ $(bzr status | head -n1 | wc -m) -gt 0 ]] ; then
-				agnor_prompt_add_segment yellow black "bzr@$revision"
-			else
-				agnor_prompt_add_segment green black "bzr@$revision"
-			fi
-		fi
-	fi
-}
-prompt_hg() {  # [-] Mercurial
-	(( $+commands[hg] )) || return
-	if $(hg id >/dev/null 2>&1); then
-		local rev status branch
-		if $(hg prompt >/dev/null 2>&1); then
-			if [[ $(hg prompt "{status|unknown}") = "?" ]]; then # files are not added
-				agnor_prompt_add_segment red white
-				status='±'
-			elif [[ -n $(hg prompt "{status|modified}") ]]; then # any modification
-				agnor_prompt_add_segment yellow black
-				status='±'
-			else # working copy is clean
-				agnor_prompt_add_segment green black
-			fi
-			# $'\u263F' # ☿ # VCS_BOOKMARK_ICON
-			agnor_prompt_raw_segment $(hg prompt "☿ {rev}@{branch}") $status
-		else
-			status=""
-			rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
-			branch=$(hg id -b 2>/dev/null)
-			if $(hg st | grep -q "^\?"); then
-				agnor_prompt_add_segment red black
-				status='±'
-			elif $(hg st | grep -q "^[MA]"); then
-				agnor_prompt_add_segment yellow black
-				status='±'
-			else
-				agnor_prompt_add_segment green black
-			fi
-			agnor_prompt_raw_segment "☿ $rev@$branch $status"
-		fi
-	fi
-}
-
-
 prompt_newline() {
 	agnor_prompt_raw_segment ${AGNOR_COMMAND_NL}
 }
@@ -315,7 +220,17 @@ prompt_shell_chars() { # ($ / #) ❯
 	agnor_prompt_raw_segment ' %(!.#.$) ❯'
 }
 
- #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
+
+# Git statuses: #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
+	# - Branch () or detached head (➦)
+	# - Dirty working directory state (orange (dirty) / green (✔))
+	# - Current branch / SHA1 in detached head state
+	# - Remote branch name (if you're tracking a remote branch)
+	# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
+	# - Stashes count
+	# - <B> - Bisect state on the current branch
+	# - >M< - Merge state on the current branch
+	# - >R> - Rebase state on the current branch
 prompt_async_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
@@ -439,6 +354,87 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		fi
 	fi
 }
+prompt_git_remotes() {
+	eval "remotes=(`git remote | sed 's/\n/ /'`)"
+	for remote in $remotes; do
+		prompt_git_remote $remote
+	done
+}
+prompt_git_remote() {
+	local remote_status
+	local remote=${1:-"origin"}
+	local fg=black
+	local current_branch=${$(git rev-parse --abbrev-ref HEAD)}
+	local remote_path=${$(git rev-parse --verify remotes\/${remote}\/${current_branch} --symbolic-full-name 2> /dev/null)}
+
+	if [[ -n ${remote_path} ]] ; then
+		local ahead=$(git rev-list ${remote_path}..HEAD 2> /dev/null | wc -l | tr -d ' ')
+		local behind=$(git rev-list HEAD..${remote_path} 2> /dev/null | wc -l | tr -d ' ')
+
+		if [[ ahead -eq 0 && behind -eq 0 ]] ; then
+			remote_status="○ "
+		else
+			if [[ behind -gt 0 ]] ; then
+				fg=red
+			elif [[ ahead -gt 0 ]] ; then
+				fg=yellow
+			fi
+			remote_status="+${ahead} -${behind}"
+		fi
+	else
+		remote_status="--"
+	fi
+
+	agnor_prompt_add_segment cyan $fg "⏏ $remote $remote_status"
+}
+prompt_bzr() { # [-] Bzr
+	(( $+commands[bzr] )) || return
+	if ( bzr status >/dev/null 2>&1 ); then
+		local revision=`bzr log | head -n2 | tail -n1 | sed 's/^revno: //'`
+		if [[ $(bzr status | head -n1 | grep "modified" | wc -m) -gt 0 ]] ; then
+			agnor_prompt_add_segment yellow black "bzr@$revision ✚ "
+		else
+			if [[ $(bzr status | head -n1 | wc -m) -gt 0 ]] ; then
+				agnor_prompt_add_segment yellow black "bzr@$revision"
+			else
+				agnor_prompt_add_segment green black "bzr@$revision"
+			fi
+		fi
+	fi
+}
+prompt_hg() {  # [-] Mercurial
+	(( $+commands[hg] )) || return
+	if $(hg id >/dev/null 2>&1); then
+		local rev status branch
+		if $(hg prompt >/dev/null 2>&1); then
+			if [[ $(hg prompt "{status|unknown}") = "?" ]]; then # files are not added
+				agnor_prompt_add_segment red white
+				status='±'
+			elif [[ -n $(hg prompt "{status|modified}") ]]; then # any modification
+				agnor_prompt_add_segment yellow black
+				status='±'
+			else # working copy is clean
+				agnor_prompt_add_segment green black
+			fi
+			# $'\u263F' # ☿ # VCS_BOOKMARK_ICON
+			agnor_prompt_raw_segment $(hg prompt "☿ {rev}@{branch}") $status
+		else
+			status=""
+			rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
+			branch=$(hg id -b 2>/dev/null)
+			if $(hg st | grep -q "^\?"); then
+				agnor_prompt_add_segment red black
+				status='±'
+			elif $(hg st | grep -q "^[MA]"); then
+				agnor_prompt_add_segment yellow black
+				status='±'
+			else
+				agnor_prompt_add_segment green black
+			fi
+			agnor_prompt_raw_segment "☿ $rev@$branch $status"
+		fi
+	fi
+}
 
 
 function build_prompt() {
@@ -489,9 +485,10 @@ function build_prompt() {
 	}
 	function agnor_async_response() {
 		local ASYNC_DATA="$(<&$1)"
-		AGNOR_ASYNC_SEGMENTS=("${(f)ASYNC_DATA}")
-		zle && zle reset-prompt
-		
+		if [[ -n $ASYNC_DATA ]]; then
+			AGNOR_ASYNC_SEGMENTS=("${(f)ASYNC_DATA}")
+			zle && zle reset-prompt
+		fi
 		zle -F $1
 		exec {1}<&-
 	}
