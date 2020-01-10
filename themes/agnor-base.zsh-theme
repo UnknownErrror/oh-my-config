@@ -20,29 +20,10 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	SEGMENT_SEPARATOR=$'\ue0b0'
 }
 
-typeset -a AGNOR_ASYNC_SEGMENTS=()
-function agnor_async_prompt_add_segment() {
-	emulate -L zsh
-	echo "${AGNOR_COMMAND_START}"
-	for (( i = 1; i <= $#; i++ )); do
-		echo $@[$i]
-	done
-}
-function agnor_async_prompt_start_segment() {
-	echo "${AGNOR_COMMAND_START}"
-}
-function agnor_async_prompt_raw_segment() {
-	emulate -L zsh
-	for (( i = 1; i <= $#; i++ )); do
-		echo $@[$i]
-	done
-}
-
 typeset -a AGNOR_SEGMENTS=()
 AGNOR_COMMAND_START=$'\x00'
 AGNOR_COMMAND_RAW=$'\x01'
 AGNOR_COMMAND_NL=$'\x03'
-AGNOR_SUBCOMMAND_DELIM=$'\n'
 
 function agnor_prompt_segments() {
 	emulate -L zsh
@@ -224,15 +205,12 @@ prompt_date() { # System date
 	agnor_prompt_add_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
 
-
-(( $+parameters[AGNOR_GIT_SHOW_SEGMENT_REMOTE] )) || AGNOR_GIT_SHOW_SEGMENT_REMOTE=true
-(( $+parameters[AGNOR_GIT_SHOW_SEGMENT_STASH] ))  || AGNOR_GIT_SHOW_SEGMENT_STASH=true
-prompt_git() { # Git: branch/detached head, dirty status
+prompt_git() { # [WRAP] Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
-	if (( $#AGNOR_ASYNC_SEGMENTS > 0)); then
+	if (( $#AGNOR_ASYNC_SEGMENTS > 0 )); then
 		agnor_prompt_raw_segment $AGNOR_ASYNC_SEGMENTS
 	fi
-} #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
+}
 
 prompt_git_remotes() {
 	eval "remotes=(`git remote | sed 's/\n/ /'`)"
@@ -337,102 +315,7 @@ prompt_shell_chars() { # ($ / #) ❯
 	agnor_prompt_raw_segment ' %(!.#.$) ❯'
 }
 
-build_prompt() {
-	RETVAL=$?
-	RETVALS=( "$pipestatus[@]" )
-	AGNOR_SEGMENTS=()
-	
-	prompt_retval_status
-	prompt_root_status
-	prompt_jobs_status
-	# prompt_virtualenv
-	# prompt_aws
-	prompt_context
-	
-	prompt_dir
-	prompt_git
-	# prompt_bzr
-	# prompt_hg
-	prompt_newline
-	
-	prompt_shell_chars
-	
-	agnor_prompt_segments
-}
-PROMPT='%{%f%b%k%}$(build_prompt) '
-
-
-
-(( $+parameters[AGNOR_DISABLE_EXTRA_SETUP] )) || AGNOR_DISABLE_EXTRA_SETUP=false
-[[ AGNOR_DISABLE_EXTRA_SETUP != true ]] && (){ # Extra setup
-	autoload -Uz add-zsh-hook
-	
-	local start_time=$SECONDS
-	function agnor_hook_preexec() {
-		start_time=$SECONDS
-	}
-	function agnor_hook_precmd() {
-		if [[ start_time -ne 0 ]]; then
-			local elapsed_time=$(( SECONDS - start_time ))
-			if [[ elapsed_time -ge 3600 ]]; then
-				local timer_hours=$(( elapsed_time / 3600 ))
-				local remainder=$(( elapsed_time % 3600 ))
-				local timer_minutes=$(( remainder / 60 ))
-				local timer_seconds=$(( remainder % 60 ))
-				print -P "%B%F{red}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%b%f"
-			elif [[ elapsed_time -ge 60 ]]; then
-				local timer_minutes=$(( elapsed_time / 60 ))
-				local timer_seconds=$(( elapsed_time % 60 ))
-				print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%b%f"
-			elif [[ elapsed_time -gt 10 ]]; then
-				print -P "%B%F{green}>>> elapsed time ${elapsed_time}s%b%f"
-			fi
-			start_time=0
-		fi
-	}
-	add-zsh-hook preexec agnor_hook_preexec
-	add-zsh-hook precmd agnor_hook_precmd
-	
-	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
-		zle && { zle reset-prompt; zle -R }
-	}
-}
-
-function set-prompt() {
-	local top_left='%~'
-	local top_right="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
-	local bottom_left='%# '
-	local bottom_right='%T'
-
-	PROMPT="$(fill-line "$top_left" "$top_right")"$'\n'$bottom_left
-	RPROMPT=$bottom_right
-}
-
-function fill-line() {
-	local left_len=$(prompt-length $1)
-	local right_len=$(prompt-length $2)
-	local pad_len=$((COLUMNS - left_len - right_len - 1))
-	local pad=${(pl.$pad_len.. .)} # pad_len spaces
-	echo ${1}${pad}${2}
-}
-function prompt-length() {
-	emulate -L zsh
-	local -i x y=$#1 m
-	if (( y )); then
-		while (( ${${(%):-$1%$y(l.1.0)}[-1]} )); do
-			x=y
-			(( y *= 2 ));
-		done
-		local xy
-		while (( y > x + 1 )); do
-			m=$(( x + (y - x) / 2 ))
-			typeset ${${(%):-$1%$m(l.x.y)}[-1]}=$m
-		done
-	fi
-	echo $x
-}
-
-
+ #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
 prompt_async_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
@@ -555,11 +438,56 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 			agnor_prompt_add_segment cyan black "GIT_DIR!"
 		fi
 	fi
-} #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
+}
 
-() { # Async setup
-	local FDD
-	agnor_async_response() {
+
+function build_prompt() {
+	RETVAL=$?
+	RETVALS=( "$pipestatus[@]" )
+	AGNOR_SEGMENTS=()
+	
+	prompt_retval_status
+	prompt_root_status
+	prompt_jobs_status
+	# prompt_virtualenv
+	# prompt_aws
+	prompt_context
+	
+	prompt_dir
+	prompt_git
+	# prompt_bzr
+	# prompt_hg
+	prompt_newline
+	
+	prompt_shell_chars
+	
+	agnor_prompt_segments
+}
+
+(){ # Setup
+	autoload -Uz add-zsh-hook
+	AGNOR_ASYNC_GIT_NEEDED=${AGNOR_ASYNC_GIT_NEEDED:-true}
+	AGNOR_GIT_SHOW_SEGMENT_REMOTE=${AGNOR_GIT_SHOW_SEGMENT_REMOTE:-true}
+	AGNOR_GIT_SHOW_SEGMENT_STASH=${AGNOR_GIT_SHOW_SEGMENT_STASH:-true}
+	
+	AGNOR_ASYNC_SEGMENTS=()
+	function agnor_async_prompt_add_segment() {
+		emulate -L zsh
+		echo "${AGNOR_COMMAND_START}"
+		for (( i = 1; i <= $#; i++ )); do
+			echo $@[$i]
+		done
+	}
+	function agnor_async_prompt_start_segment() {
+		echo "${AGNOR_COMMAND_START}"
+	}
+	function agnor_async_prompt_raw_segment() {
+		emulate -L zsh
+		for (( i = 1; i <= $#; i++ )); do
+			echo $@[$i]
+		done
+	}
+	function agnor_async_response() {
 		local ASYNC_DATA="$(<&$1)"
 		AGNOR_ASYNC_SEGMENTS=("${(f)ASYNC_DATA}")
 		zle && zle reset-prompt
@@ -567,13 +495,82 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		zle -F $1
 		exec {1}<&-
 	}
-	agnor_hook_precmd_2() {
-		[[ -n $FDD ]] && zle -F $FDD 2>/dev/null
-		AGNOR_ASYNC_SEGMENTS=()
-		exec {FDD}< <(
-			prompt_async_git
-		)
-		zle -F $FDD agnor_async_response
+	
+	local start_time=$SECONDS
+	function agnor_hook_preexec() {
+		start_time=$SECONDS
 	}
-	add-zsh-hook precmd agnor_hook_precmd_2
+	function agnor_hook_precmd() {
+		# Async
+		if [[ $AGNOR_ASYNC_GIT_NEEDED == true ]; then
+			[[ -n $AGNOR_ASYNC_FD ]] && zle -F $AGNOR_ASYNC_FD 2>/dev/null
+			AGNOR_ASYNC_SEGMENTS=()
+			exec {AGNOR_ASYNC_FD}< <(
+				prompt_async_git
+			)
+			zle -F $AGNOR_ASYNC_FD agnor_async_response
+		fi
+		
+		# Elapsed time
+		if [[ start_time -ne 0 ]]; then
+			local elapsed_time=$(( SECONDS - start_time ))
+			if [[ elapsed_time -ge 3600 ]]; then
+				local timer_hours=$(( elapsed_time / 3600 ))
+				local remainder=$(( elapsed_time % 3600 ))
+				local timer_minutes=$(( remainder / 60 ))
+				local timer_seconds=$(( remainder % 60 ))
+				print -P "%B%F{red}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%b%f"
+			elif [[ elapsed_time -ge 60 ]]; then
+				local timer_minutes=$(( elapsed_time / 60 ))
+				local timer_seconds=$(( elapsed_time % 60 ))
+				print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%b%f"
+			elif [[ elapsed_time -gt 10 ]]; then
+				print -P "%B%F{green}>>> elapsed time ${elapsed_time}s%b%f"
+			fi
+			start_time=0
+		fi
+	}
+	add-zsh-hook preexec agnor_hook_preexec
+	add-zsh-hook precmd agnor_hook_precmd
+	
+	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
+		zle && { zle reset-prompt; zle -R }
+	}
+	
+	PROMPT='%{%f%b%k%}$(build_prompt) '
 }
+
+function set-prompt() {
+	local top_left='%~'
+	local top_right="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+	local bottom_left='%# '
+	local bottom_right='%T'
+
+	PROMPT="$(fill-line "$top_left" "$top_right")"$'\n'$bottom_left
+	RPROMPT=$bottom_right
+}
+
+function fill-line() {
+	local left_len=$(prompt-length $1)
+	local right_len=$(prompt-length $2)
+	local pad_len=$((COLUMNS - left_len - right_len - 1))
+	local pad=${(pl.$pad_len.. .)} # pad_len spaces
+	echo ${1}${pad}${2}
+}
+function prompt-length() {
+	emulate -L zsh
+	local -i x y=$#1 m
+	if (( y )); then
+		while (( ${${(%):-$1%$y(l.1.0)}[-1]} )); do
+			x=y
+			(( y *= 2 ));
+		done
+		local xy
+		while (( y > x + 1 )); do
+			m=$(( x + (y - x) / 2 ))
+			typeset ${${(%):-$1%$m(l.x.y)}[-1]}=$m
+		done
+	fi
+	echo $x
+}
+
