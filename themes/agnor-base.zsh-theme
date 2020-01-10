@@ -502,7 +502,7 @@ function build_prompt() {
 	}
 	function agnor_hook_precmd() {
 		# Async
-		if [[ $AGNOR_ASYNC_GIT_NEEDED == true ]; then
+		if [[ $AGNOR_ASYNC_GIT_NEEDED == true ]]; then
 			[[ -n $AGNOR_ASYNC_FD ]] && zle -F $AGNOR_ASYNC_FD 2>/dev/null
 			AGNOR_ASYNC_SEGMENTS=()
 			exec {AGNOR_ASYNC_FD}< <(
