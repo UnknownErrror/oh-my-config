@@ -7,8 +7,6 @@ export ZSH="$HOME/.oh-my-config" # [REQ]
 
 [[ -n $IS_TERMUX ]] && export SD="/sdcard"
 [[ -z $IS_TERMUX ]] && export DISPLAY=localhost:0.0 # X11
-export LC_NUMERIC="POSIX"
-export LANG="ru_RU.UTF-8"
 
 
 

@@ -543,8 +543,8 @@ function agnor_setup(){ # Setup
 	RPROMPT='%y'
 	
 	PROMPT='%{%f%b%k%}$(build_prompt) '
-	PROMPT2='%(1_.%_.-)>'
-	PROMPT3='#?>'
+	PROMPT2='%(1_.%_.-)> '
+	PROMPT3='#?> '
 	#PROMPT4='+ %N:%i>'
 	typeset -g agnor_prompt4_fix_symbol='%e'
 	PROMPT4='%F{yellow}${(l:${(S%)agnor_prompt4_fix_symbol}::+:)} %F{blue}%N%F{242}:%i:%I>%f '
@@ -552,6 +552,7 @@ function agnor_setup(){ # Setup
 	#TIMEFMT=$'%J:\n%U user %S system %P cpu %E total'
 	TIMEFMT=$'%J:\n    user:\t%U\n    system:\t%S\n    total:\t%E\n    cpu:\t%P'
 	# SPROMPT="Correct '%R' to '%r' [nyae]?"
+	SPROMPT="%{%F{yellow}%B%}[ZSH]: Correct '%{%F{red}%B%}%R%{%f%b%}%{%F{yellow}%B%}' to '%{%F{green}%b%}%r%{%f%}%{%F{yellow}%B%}' [nyae]? %f"
 	
 	# POSTEDIT=`echotc se`
 
