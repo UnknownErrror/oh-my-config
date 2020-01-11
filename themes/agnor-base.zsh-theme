@@ -177,18 +177,18 @@ prompt_context() { # Context: ((ssh) <user>@<hostname> / (screen) <user>@<hostna
 	[[ shell_deep -gt 1 ]] && agnor_prompt_add_segment black default "${shell_deep}"
 	
 	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
-		agnor_prompt_add_segment black yellow "(ssh) %(!..%{%F{default}%})${USER}@%m"
+		agnor_prompt_add_segment black yellow "(ssh) %(!..%{%F{default}%})${USERNAME}@%m"
 	elif [[ -n $STY ]]; then
-		agnor_prompt_add_segment black white "(screen) %(!.%{%F{yellow}%}.)${USER}@%m"
+		agnor_prompt_add_segment black white "(screen) %(!.%{%F{yellow}%}.)${USERNAME}@%m"
 	elif [[ -n $TMUX ]]; then
 		local session_name="$(tmux display-message -p '#S')"
 		if [[ -n $session_name ]]; then
-			agnor_prompt_add_segment black magenta "(tmux@${session_name}) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
+			agnor_prompt_add_segment black magenta "(tmux@${session_name}) %(!.%{%F{yellow}%}.%{%F{default}%})${USERNAME}@%m"
 		else
-			agnor_prompt_add_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})${USER}@%m"
+			agnor_prompt_add_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})${USERNAME}@%m"
 		fi
-	elif [[ $USER != $DEFAULT_USER ]]; then
-		agnor_prompt_add_segment black white "%(!.%{%F{yellow}%}.)${USER}@%m"
+	elif [[ $USERNAME != $DEFAULT_USER ]]; then
+		agnor_prompt_add_segment black white "%(!.%{%F{yellow}%}.)${USERNAME}@%m"
 	fi
 }
 
@@ -207,15 +207,15 @@ prompt_dir() { # Dir: ( / WO) + (PWD)
 	else
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	agnor_prompt_add_segment blue white "${icon}%~"
+	agnor_prompt_add_segment blue white "${icon}${PWD/#$HOME/~}"
 }
 prompt_dir_lite() { # Dir (Lite): () + (PWD)
 	local icon
 	[[ ! -w "$PWD" ]] && icon="$(print_icon LOCK_ICON) "
-	agnor_prompt_add_segment blue white "${icon}%~"
+	agnor_prompt_add_segment blue white "${icon}${PWD/#$HOME/~}"
 }
 prompt_dir_simple() { # Dir (Simple): (PWD)
-	agnor_prompt_add_segment blue white "%~"
+	agnor_prompt_add_segment blue white "${PWD/#$HOME/~}"
 }
 
 prompt_time() { # System time
@@ -224,6 +224,10 @@ prompt_time() { # System time
 prompt_date() { # System date
 	agnor_prompt_add_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
+
+# git branch >/dev/null 2>/dev/null && echo '±' && return
+# hg root >/dev/null 2>/dev/null && echo '☿' && return
+
 
 prompt_async() { # Prompt all async data
 	if (( $#AGNOR_ASYNC_SEGMENTS > 0 )); then
@@ -454,7 +458,7 @@ prompt_async_hg() { # Mercurial: (☿ <revision>@<branch> ±)
 		fi
 	fi
 }
-
+# svn/fossil
 
 function build_prompt() {
 	RETVAL=$?

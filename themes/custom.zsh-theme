@@ -140,25 +140,3 @@ function build_prompt000() {
 # '!' 'modified: '
 # '>' 'renamed: '
 # '?' 'Untracked files:'
-
-
-build_prompt() {
-	RETVAL=$?
-	RETVALS=( "$pipestatus[@]" )
-	
-	prompt_retval_status
-	prompt_root_status
-	prompt_jobs_status
-	# prompt_virtualenv
-	# prompt_aws
-	# prompt_tmux_context
-	prompt_context
-	
-	prompt_dir
-	# prompt_git
-	# prompt_bzr
-	# prompt_hg
-	prompt_newline
-	
-	prompt_shell_chars
-}
