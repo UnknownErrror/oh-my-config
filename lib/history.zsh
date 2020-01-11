@@ -12,17 +12,16 @@ function omz_history() {
 	fi
 }
 case ${HIST_STAMPS-} in # Timestamp format
-	"mm/dd/yyyy") alias history='omz_history -f' ;;
-	"dd.mm.yyyy") alias history='omz_history -E' ;;
-	"yyyy-mm-dd") alias history='omz_history -i' ;;
+	'mm/dd/yyyy') alias history='omz_history -f' ;;
+	'dd.mm.yyyy') alias history='omz_history -E' ;;
+	'yyyy-mm-dd') alias history='omz_history -i' ;;
 	'')           alias history='omz_history'    ;;
 	*)            alias history="omz_history -t '$HIST_STAMPS'" ;;
 esac
 
-[ -z "$HISTFILE" ] && HISTFILE="$HOME/.zhistory"
-
-HISTSIZE=50000
-SAVEHIST=10000
+[[ -z "$HISTFILE" ]] && HISTFILE="$HOME/.zhistory"
+[[ -z "$HISTSIZE" ]] && HISTSIZE=50000
+[[ -z "$SAVEHIST" ]] && SAVEHIST=1000
 
 setopt EXTENDED_HISTORY
 setopt HIST_EXPIRE_DUPS_FIRST

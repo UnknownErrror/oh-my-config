@@ -225,7 +225,6 @@ prompt_date() { # System date
 	agnor_prompt_add_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
 
-# git branch >/dev/null 2>/dev/null && echo '±' && return
 # hg root >/dev/null 2>/dev/null && echo '☿' && return
 
 
@@ -428,7 +427,8 @@ prompt_async_bzr() { # Bzr: (bzr@<revision> ✚)
 }
 prompt_async_hg() { # Mercurial: (☿ <revision>@<branch> ±)
 	(( $+commands[hg] )) || return
-	if ( hg id >/dev/null 2>&1 ); then
+	# if ( hg id >/dev/null 2>&1 ); then
+	if ( hg root >/dev/null 2>&1 ); then
 		local dirty
 		if ( hg prompt >/dev/null 2>&1 ); then
 			if [[ $(hg prompt "{status|unknown}") == "?" ]]; then # files are not added
@@ -458,7 +458,7 @@ prompt_async_hg() { # Mercurial: (☿ <revision>@<branch> ±)
 		fi
 	fi
 }
-# svn/fossil
+# CVS,.svn
 
 function build_prompt() {
 	RETVAL=$?
@@ -508,6 +508,8 @@ function agnor_setup(){ # Setup
 			[[ -n $AGNOR_ASYNC_FD ]] && zle -F $AGNOR_ASYNC_FD 2>/dev/null
 			exec {AGNOR_ASYNC_FD}< <(
 				prompt_async_git
+				# prompt_async_bzr
+				# prompt_async_hg
 			)
 			zle -F $AGNOR_ASYNC_FD agnor_async_response
 		fi
@@ -539,8 +541,17 @@ function agnor_setup(){ # Setup
 	}
 	
 	PROMPT='%{%f%b%k%}$(build_prompt) '
-}
+	PROMPT2='%(1_.%_.\\)>'
+	
+	RPROMPT='%y'
+	
+	TIMEFMT=$'%J:\n%U user %S system %P cpu %E total'
+	
+	SPROMPT="Correct '%R' to '%r' [nyae]?"
+	
+	# POSTEDIT=`echotc se`
 
+}
 agnor_setup "$@"
 
 function set-prompt() {
@@ -552,7 +563,6 @@ function set-prompt() {
 	PROMPT="$(fill-line "$top_left" "$top_right")"$'\n'$bottom_left
 	RPROMPT=$bottom_right
 }
-
 function fill-line() {
 	local left_len=$(prompt-length $1)
 	local right_len=$(prompt-length $2)

@@ -46,10 +46,14 @@ zstyle ':completion::complete:*' cache-path $ZSH_CACHE_DIR
 
 
 zstyle ':completion:*' list-prompt '%SAt %p: Hit TAB for more, or the character to insert%s'
-zstyle ':completion:*' menu select=1 _complete _ignored _approximate
+# zstyle ':completion:*::::' completer _expand _complete _ignored _approximate
+zstyle ':completion:*' menu select=1 _expand _complete _ignored _approximate
 zstyle ':completion:*' select-prompt '%SScrolling active: current selection at %p%s'
 
-zstyle ':completion:*:approximate:*' max-errors 3 # allow one error for every three characters typed in approximate completer
+# zstyle ':completion:*:approximate:*' max-errors 3 # allow one error for every three characters typed in approximate completer
+zstyle -e ':completion:*:approximate:*' max-errors 'reply=( $(( ($#PREFIX+$#SUFFIX)/3 )) numeric )'
+
+zstyle ':completion:*:expand:*' tag-order all-expansions
 
 # formatting and messages
 zstyle ':completion:*' verbose yes
@@ -61,6 +65,11 @@ zstyle ':completion:*:warnings' format $'\e[01;31m -- No Matches Found --\e[0m'
 zstyle ':completion:*:corrections' format '%B%d (errors: %e)%b'
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*:options' auto-description '%d'
+
+
+# offer indexes before parameters in subscripts
+# zstyle ':completion:*:*:-subscript-:*' tag-order indexes parameters
+
 
 # command completion: highlight matching part of command, and 
 zstyle -e ':completion:*:-command-:*:commands' list-colors 'reply=( '\''=(#b)('\''$words[CURRENT]'\''|)*-- #(*)=0=38;5;45=38;5;136'\'' '\''=(#b)('\''$words[CURRENT]'\''|)*=0=38;5;45'\'' )'

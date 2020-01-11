@@ -47,6 +47,7 @@ alias nowdate='date +"%d-%m-%Y"'
 alias wget='wget -c' # continue after fail (c)
 alias mkdir='mkdir -pv' # recursive (p), verbose (v)
 alias nano='nano -l' # line-numbers (l)
+alias less='less -M'
 
 
 [[ -z $TMUX_PATH ]] && alias sudo='su -c "$@"'
@@ -75,11 +76,11 @@ alias tupd='~/tmux upd'
 alias starwars='telnet towel.blinkenlights.nl'
 
 alias g='git'
-# alias commit-all="git add -A && git commit -v -m \"$(curl -s 'http://whatthecommit.com/index.txt')\""
-# alias commit="git commit -v -m \"$(curl -s 'http://whatthecommit.com/index.txt')\""
-# alias uncommit='git reset --soft HEAD^'
 # git reset --hard <commitID> && git clean -f
 # git merge -s ours; git push -f
-# git config --global alias.rm-tags "!(for t in `git tag`; do git push origin :$t; git tag -d $t; done)"
+# git config --global alias.rm-tags "!{ for t in `git tag`; do git push origin :$t; git tag -d $t; done }"
 # git config --global alias.tree "!git log --graph --pretty=format:'%Cred%h%Creset %an: %s - %Creset %C(yellow)%d%Creset %Cgreen(%cr)%Creset' --abbrev-commit --date=relative"
 # git config --global alias.pretty-log '!git log --graph --oneline --all'
+git config --global alias.commit-all "!{ git add -A && git commit -v -m \"\$(curl -s 'http://whatthecommit.com/index.txt')\" }"
+git config --global alias.commit-r "!{ git commit -v -m \"\$(curl -s 'http://whatthecommit.com/index.txt')\" }"
+git config --global alias.uncommit "!{ git reset --soft HEAD^ }"
