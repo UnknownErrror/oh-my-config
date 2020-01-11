@@ -50,7 +50,7 @@ alias nano='nano -l' # line-numbers (l)
 alias less='less -M'
 
 
-[[ -z $TMUX_PATH ]] && alias sudo='su -c "$@"'
+[[ -n $IS_TERMUX ]] && alias sudo='su -c "$@"'
 alias sysro='mount -o remount,ro /system'
 alias sysrw='mount -o remount,rw /system'
 alias mountrw='mount -o remount,rw'
