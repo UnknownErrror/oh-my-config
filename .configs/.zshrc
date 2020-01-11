@@ -133,7 +133,7 @@ setopt MONITOR
 setopt NOTIFY
 ### Prompting:
 # setopt PROMPT_SUBST # theme-and-appereance.zsh
-setoot PROMPT_PERCENT
+setopt PROMPT_PERCENT
 # Scripts and Functions:
 setopt C_BASES
 # setopt C_PRECEDENCES
