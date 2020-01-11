@@ -77,13 +77,14 @@ function ask() { # ask <text> [Y|N] # https://djm.me/ask
 	done
 }
 function is-stdin-open() {
-	[ -t 0 ] && return 1 || return 0
+	[ -t 0 ] && return 0 || return 1
 }
 
-function chcur() { # chcur [curmode:1|2]
+function chcur() { # chcur [<curmode>:(1/2)]
 	case $1 in
-		1|\|) echo -ne '\e[5 q' ;; # |
-		2|_) echo -ne '\e[3 q' ;; # _
+		1|edit|\|) echo -ne '\e[5 q' ;; # |
+		2|underscore|_) echo -ne '\e[3 q' ;; # _
+		3|\=|b_|_b) echo -ne '\e[7 q' ;; # _ (bold)
 		*) echo -ne '\e[1 q' ;; # Default
 	esac
 }
@@ -109,9 +110,8 @@ function chpath(){
 function set_perm() { # <target> <owner> <group> <permission> [context]
 	chown -v $2:$3 $1 || return 1
 	chmod -v $4 $1 || return 1
-	local CON=$5
-	if [[ -n $CON ]]; then # u:object_r:system_file:s0
-		chcon -v $CON $1 || return 1
+	if [[ -n $5 ]]; then
+		chcon -v $5 $1 || return 1
 	fi 
 }
 function set_perm_recursive() { # <directory> <owner> <group> <dirpermission> <filepermission> [context]

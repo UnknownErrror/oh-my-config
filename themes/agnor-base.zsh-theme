@@ -540,14 +540,18 @@ function agnor_setup(){ # Setup
 		zle && { zle reset-prompt; zle -R }
 	}
 	
-	PROMPT='%{%f%b%k%}$(build_prompt) '
-	PROMPT2='%(1_.%_.\\)>'
-	
 	RPROMPT='%y'
 	
-	TIMEFMT=$'%J:\n%U user %S system %P cpu %E total'
+	PROMPT='%{%f%b%k%}$(build_prompt) '
+	PROMPT2='%(1_.%_.-)>'
+	PROMPT3='#?>'
+	#PROMPT4='+ %N:%i>'
+	typeset -g agnor_prompt4_fix_symbol='%e'
+	PROMPT4='%F{yellow}${(l:${(S%)agnor_prompt4_fix_symbol}::+:)} %F{blue}%N%F{242}:%i:%I>%f '
 	
-	SPROMPT="Correct '%R' to '%r' [nyae]?"
+	#TIMEFMT=$'%J:\n%U user %S system %P cpu %E total'
+	TIMEFMT=$'%J:\n    user:\t%U\n    system:\t%S\n    total:\t%E\n    cpu:\t%P'
+	# SPROMPT="Correct '%R' to '%r' [nyae]?"
 	
 	# POSTEDIT=`echotc se`
 
@@ -586,4 +590,3 @@ function prompt-length() {
 	fi
 	echo $x
 }
-

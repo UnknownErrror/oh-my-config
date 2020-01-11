@@ -7,6 +7,6 @@ if [[ ENABLE_CORRECTION == true ]]; then
 	
 	setopt CORRECT
 	setopt CORRECT_ALL
-	CORRECT_IGNORE='_*'
-	CORRECT_IGNORE_FILE='_*'
+	#CORRECT_IGNORE='_*'
+	#CORRECT_IGNORE_FILE='_*'
 fi
