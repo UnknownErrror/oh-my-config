@@ -1,23 +1,17 @@
-[[ -d "/data/data/com.termux" ]] && export TMUX_PATH="/data/data/com.termux" || export TMUX_PATH=''
+[[ -n $IS_TERMUX ]] && export TMUX_PATH="/data/data/com.termux" || export TMUX_PATH=''
 
-export USER="$(id -un)"
-[[ -n $TMUX_PATH ]] && export DEFAULT_USER="u0_a78" || export DEFAULT_USER="unkerr"
+[[ -n $IS_TERMUX ]] && export DEFAULT_USER="u0_a78" || export DEFAULT_USER="unkerr"
 
 export TERM="xterm-256color"
-
-[[ -n $TMUX_PATH ]] && export EDITOR=micro || export EDITOR=nano
 export ZSH="$HOME/.oh-my-config" # [REQ]
-export SD="/sdcard"
-[[ -z $TMUX_PATH ]] && export DISPLAY=localhost:0.0 # X11
+
+[[ -n $IS_TERMUX ]] && export SD="/sdcard"
+[[ -z $IS_TERMUX ]] && export DISPLAY=localhost:0.0 # X11
 export LC_NUMERIC="POSIX"
-ecport LANH="ru_RU.UTF-8"
+export LANG="ru_RU.UTF-8"
 
 
 
-
-LSCOLORS="cxFxgxhxbxeadaabagDdad" # BSD
-LS_COLORS="di=32;40:ln=1;35;40:so=36;40:pi=37;40:ex=31;40:bd=34;40:cd=33;40:su=0;41:sg=0;46:tw=1;33;43:ow=0;43:" # Linux
-eval $(dircolors -b $ZSH/.configs/LS_COLORS)
 
 
 CASE_SENSITIVE=false # Use case-sensitive completion
@@ -39,6 +33,8 @@ plugins=(
 	extract last-working-dir colored-man-pages jump
 	
 	adb pip gem
+	
+	command-not-found
 )
 source $ZSH/zsh-init.zsh # [REQ]
 
@@ -58,7 +54,7 @@ source $ZSH/zsh-init.zsh # [REQ]
 
 HISTFILE=~/.zhistory
 SAVEHIST=50000
-HISTSIZE=100000
+HISTSIZE=50000
 DIRSTACKSIZE=20
 
 
@@ -153,29 +149,21 @@ unsetopt BEEP
 # [INIT]
 
 # chcur 1
-[[ -n $TMUX_PATH ]] && chpath bb
+[[ -n $IS_TERMUX ]] && chpath bb
 
 # run-help command
 unalias run-help
 autoload run-help
 
-# Recent dirs # cdr command
+# Recent dirs & cdr command
 autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
 zstyle ':completion:*:*:cdr:*:*' menu selection
 
-
-# Флаги оптимизации для gcc
-CFLAGS="-O3 -march=pentium4 -fomit-frame-pointer
--funroll-loops -pipe -mfpmath=sse -mmmx -msse2 -fPIC"
-CXXFLAGS="$CFLAGS"
-BOOTSTRAPCFLAGS="$CFLAGS"
-export CFLAGS CXXFLAGS BOOTSTRAPCFLAGS
-
-# .zshenv
-PROMPT2='%i %_>'
-# RPROMPT='%y'
-TIMEFMT=$'%J:\n%U user %S system %P cpu %E total'
-SPROMPT="Correct '%R' to '%r' [nyae]?"
-# POSTEDIT=`echotc se`
-
+# Calc
+autoload -U zcalc
+function zsh_calc() {
+	zcalc -e "$*"
+}
+alias calc='noglob zsh_calc'
+aliases[=]='noglob zsh_calc'
