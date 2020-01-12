@@ -8,7 +8,8 @@ export ZSH="$HOME/.oh-my-config" # [REQ]
 [[ -n $IS_TERMUX ]] && export SD="/sdcard"
 [[ -z $IS_TERMUX ]] && export DISPLAY=localhost:0.0 # X11
 
-
+watch=all
+WATCHFMT="[%U%D %T%u]  %B%n%b has %a %B%l%b from %B%M%b."
 
 
 
@@ -62,6 +63,7 @@ DIRSTACKSIZE=20
 # setopt AUTO_PUSHD # directories.zsh
 setopt CHASE_DOTS
 unsetopt CHASE_LINKS
+unsetopt CDABLE_VARS
 # setopt PUSHD_IGNORE_DUPS # directories.zsh
 # setopt PUSHD_MINUS # directories.zsh
 unsetopt PUSHD_SILENT
