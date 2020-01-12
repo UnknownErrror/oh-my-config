@@ -37,14 +37,6 @@ function repeat0() { # repeat <count> <command>
 	done
 }
 
-function lcd cdl() { # cd + ls
-	cd "$@" && ls -AF
-}
-function mkcd() { # mkdir + cd
-	# mkdir -vp "$@" && eval cd "\"\$$#\""
-	mkdir -vp "$@" && cd ${@:$#}
-}
-
 function maketar() { # Creates an archive (*.tar.gz) from given directory.
 	tar cvzf "${1%%/}.tar.gz" "${1%%/}/"
 }

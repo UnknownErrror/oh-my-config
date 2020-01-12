@@ -3,7 +3,6 @@ ZSH=$HOME/.oh-my-config
 rm -rfdv $ZSH/
 
 git clone https://github.com/UnknownErrror/oh-my-config.git $ZSH --depth 1
-cp -vR $ZSH/.termux $HOME/
 cp -vR $ZSH/.configs/.zshrc $HOME/
 cp -vR $ZSH/.configs/.zshenv $HOME/
 cp -vR $ZSH/.configs/.zlogin $HOME/

@@ -67,6 +67,18 @@ zstyle ':completion:*' group-name ''
 zstyle ':completion:*:options' auto-description '%d'
 
 
+# Ignore parent directory
+# Useful for cd, mv and cp. Ex, cd will never select the parent directory (ie cd ../<TAB>):
+zstyle ':completion:*:(cd|mv|cp):*' ignore-parents parent pwd
+
+# Ignoring lost+found directories
+zstyle ':completion:*:cd:*' ignored-patterns '(*/)#lost+found'
+
+# Ignore what's already in the line
+# With commands like `rm/kill/diff' it's annoying if one gets offered the same filename again even if it is already on the command line. To avoid that:
+zstyle ':completion:*:(rm|kill|diff):*' ignore-line yes
+
+
 # offer indexes before parameters in subscripts
 # zstyle ':completion:*:*:-subscript-:*' tag-order indexes parameters
 
