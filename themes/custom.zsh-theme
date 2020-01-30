@@ -45,41 +45,6 @@ git_details() {
 # fi
 
 
-watch (WATCH)
-An array (colon-separated list) of login/logout events to report. If it contains the single word `all', then all login/logout events are reported. If it contains the single word `notme', then all login/logout events are reported except for those originating from $USERNAME. An entry in this list may consist of a username, an @ followed by a remote hostname, and a % followed by a line (tty). Any or all of these components may be present in an entry; if a login/logout event matches all of them, it is reported.
-WATCHFMT
-The format of login/logout reports if the watch parameter is set. Default is `%n has %a %l from %m'. Recognizes the following escape sequences:
-%n
-The name of the user that logged in/out.
-%a
-The observed action, i.e. `logged on' or `logged off'.
-%l
-The line (tty) the user is logged in on.
-%M
-The full hostname of the remote host.
-%m
-The hostname up to the first `.'. If only the IP address is available or the utmp field contains the name of an X-windows display, the whole name is printed. NOTE: The %m and %M escapes will work only if there is a host name field in the utmp on your machine. Otherwise they are treated as ordinary strings.
-%S (%s)
-Start (stop) standout mode.
-%U (%u)
-Start (stop) underline mode.
-%B (%b)
-Start (stop) boldface mode.
-%t
-%@
-The time, in 12-hour, am/pm format.
-%T
-The time, in 24-hour format.
-%w
-The date in day-dd format.
-%W
-The date in mm/dd/yy format.
-%D
-The date in yy-mm-dd format.
-%(x:true-text:false-text)
-Specifies a ternary expression. The character following the x is arbitrary; the same character is used to separate the text for the true result from that for the false result. Both the separator and the right parenthesis may be escaped with a backslash. Ternary expressions may be nested. The test character x may be any one of l, n, m, or M, which indicate a true result if the corresponding escape sequence would return a non-empty value; or it may be a, which indicates a true result if the watched user has logged in, or false if he has logged out. Other characters evaluate to neither true nor false; the entire expression is omitted in this case. If the result is true, then the true-text is formatted according to the result above and printed, and the false-text is skipped. If false, the true-text is skipped, and the false-text is formatted and printed. Either or both of the branches may be empty, but both separators must always be present.
-
-
 parseGitStatus() {
 	local line gitstatus=$(git status --porcelain --untracked-files="${AGNOR_GIT_SHOW_UNTRACKED_FILES:-normal}")
 	while read -r line; do

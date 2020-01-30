@@ -1,6 +1,7 @@
 [[ -n $IS_TERMUX ]] && export TMUX_PATH="/data/data/com.termux" || export TMUX_PATH=''
 
 [[ -n $IS_TERMUX ]] && export DEFAULT_USER="u0_a78" || export DEFAULT_USER="unkerr"
+[[ -n $IS_TERMUX ]] && export DEFAULT_HOST="localhost" || export DEFAULT_HOST="UnkErr-2004"
 
 export TERM="xterm-256color"
 export ZSH="$HOME/.oh-my-config" # [REQ]
@@ -8,8 +9,7 @@ export ZSH="$HOME/.oh-my-config" # [REQ]
 [[ -n $IS_TERMUX ]] && export SD="/sdcard"
 [[ -z $IS_TERMUX ]] && export DISPLAY=localhost:0.0 # X11
 
-watch=all
-WATCHFMT="[%U%D %T%u]  %B%n%b has %a %B%l%b from %B%M%b."
+
 
 
 
@@ -63,7 +63,6 @@ DIRSTACKSIZE=20
 # setopt AUTO_PUSHD # directories.zsh
 setopt CHASE_DOTS
 unsetopt CHASE_LINKS
-unsetopt CDABLE_VARS
 # setopt PUSHD_IGNORE_DUPS # directories.zsh
 # setopt PUSHD_MINUS # directories.zsh
 unsetopt PUSHD_SILENT

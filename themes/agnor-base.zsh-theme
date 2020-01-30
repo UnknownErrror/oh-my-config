@@ -1,16 +1,6 @@
 source ${0%/*}/agnor-icons.zsh
 
 ######################################
-### Variables ###
-
-AGNOR_SEGMENTS=()
-AGNOR_COMMAND_START=$'\x00'
-AGNOR_COMMAND_RAW=$'\x01'
-AGNOR_COMMAND_NL=$'\x03'
-
-AGNOR_ASYNC_SEGMENTS=()
-
-######################################
 ### Utilities ###
 
 # Configurable: AGNOR_DISABLE_UNTRACKED_FILES_DIRTY, AGNOR_GIT_STATUS_IGNORE_SUBMODULES
@@ -21,93 +11,7 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	[[ -n $(git status ${FLAGS} 2>/dev/null) ]] && echo '*'
 }
 
-function agnor_prompt_add_segment() {
-	AGNOR_SEGMENTS+=($AGNOR_COMMAND_START $@)
-}
-function agnor_prompt_start_segment() {
-	AGNOR_SEGMENTS+=($AGNOR_COMMAND_START)
-}
-function agnor_prompt_raw_segment() {
-	AGNOR_SEGMENTS+=($@)
-}
-
-function agnor_async_prompt_add_segment() {
-	emulate -L zsh
-	echo "$AGNOR_COMMAND_START"
-	for (( i = 1; i <= $#; i++ )); do
-		echo $@[$i]
-	done
-}
-function agnor_async_prompt_start_segment() {
-	echo "$AGNOR_COMMAND_START"
-}
-function agnor_async_prompt_raw_segment() {
-	emulate -L zsh
-	for (( i = 1; i <= $#; i++ )); do
-		echo $@[$i]
-	done
-}
-
-######################################
-### Segment drawing ###
-
-(){ # Special Powerline characters # Do not change this!
-	local LC_ALL='' LC_CTYPE='en_US.UTF-8' # Set the right locale to protect special characters
-	SEGMENT_SEPARATOR=$'\ue0b0'
-}
-
-function agnor_prompt_segments() {
-	emulate -L zsh
-	local BG FG STATE COMMAND CURRENT_BG='NONE'
-	
-	for (( i = 1; i <= $#AGNOR_SEGMENTS; i++ )); do
-		COMMAND=$AGNOR_SEGMENTS[$i]
-		
-		if [[ $COMMAND == $AGNOR_COMMAND_START ]]; then
-			STATE='start'
-		elif [[ $COMMAND == $AGNOR_COMMAND_RAW ]]; then
-			STATE='content'
-		elif [[ $COMMAND == $AGNOR_COMMAND_NL ]]; then
-			if [[ $CURRENT_BG != 'NONE' ]]; then
-				echo -n " %{%K{008}%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
-			else
-				echo -n "%{%K{008}%}"
-			fi
-			echo -n "%E%{%f%}\n%{%k%}"
-			CURRENT_BG='NONE'
-		elif [[ $STATE == 'content' ]]; then
-			echo -n ${COMMAND}
-			
-		elif [[ $STATE == 'start' ]]; then
-			BG=${COMMAND}
-			STATE='bg'
-		elif [[ $STATE == 'bg' ]]; then
-			FG=${COMMAND}
-			STATE='fg'
-		elif [[ $STATE == 'fg' ]]; then
-			if [[ $CURRENT_BG != 'NONE' && $CURRENT_BG != $BG ]]; then
-				echo -n " %{%K{$BG}%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{%F{$FG}%} "
-			else
-				echo -n "%{%K{$BG}%F{$FG}%} "
-			fi
-			echo -n ${COMMAND}
-			CURRENT_BG=$BG
-			STATE='content'
-		fi
-	done
-	
-	if [[ $CURRENT_BG != 'NONE' ]]; then
-		echo -n " %{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
-	else
-		echo -n "%{%k%}"
-	fi
-	echo -n "%{%f%}"
-}
-
-######################################
-### Prompt components ###
-
-function normalize_exit_status() {
+function agnor_format_exit_status() {
 	local RETVAL=$1
 	if (( RETVAL <= 128 )); then
 		echo "${RETVAL}"
@@ -117,16 +21,67 @@ function normalize_exit_status() {
 		echo "SIG${signals[$idx]}(${sig})"
 	fi
 }
-prompt_retval_status() { # Return Value: (✘ <codes> / ✘ <code> / ✘ SIG<sig>(<code>) / ✔)
+
+function agnor_get_user_context() { # Context: ((ssh/screen/tmux) <user>@<hostname>)
+	local icon string
+	if [[ ${(%):-%#} == '#' ]]; then
+		icon="%{%F{yellow}%}$(print_icon ROOT_ICON)"
+	elif [[ -n $SUDO_COMMAND ]]; then
+		icon="%{%F{yellow}%}$(print_icon SUDO_ICON)"
+	fi
+	if [[ $SHORT_HOST != $DEFAULT_HOST ]]; then
+		string="%{%(!.%F{yellow}.%F{default})%}${USERNAME}@${SHORT_HOST}"
+	elif [[ $USERNAME != $DEFAULT_USER ]]; then
+		string="%{%(!.%F{yellow}.%F{default})%}${USERNAME}"
+	fi
+	
+	if [[ -n "$string" ]]; then
+		if [[ -n "$icon" ]]; then
+			icon="${icon} "
+		fi
+		echo "${icon}${string}"
+	else
+		echo "${icon}"
+	fi
+}
+
+######################################
+### Segment drawing ###
+
+function agnor_prompt_full() {
+	if [[ "$1" == "right" ]]; then
+		echo -n " %{%F{$2}%}\uE0B3 $3"
+	else
+		echo -n "%{%F{$2}%} $3 \uE0B1"
+	fi
+}
+
+function agnor_prompt_start() {
+	if [[ "$1" == "right" ]]; then
+		echo -n " %{%F{$2}%}\uE0B3 $3"
+	else
+		echo -n "%{%F{$2}%} $3"
+	fi
+}
+function agnor_prompt_end() {
+	if [[ "$1" == "left" ]]; then
+		echo -n " \uE0B1"
+	fi
+}
+
+######################################
+### Prompt components ###
+
+prompt_retval_status() { # Return Value: (✘ <retvals> / ✘ <retval> / ✔)
 	local code_sum code
 	if (( $#RETVALS > 1 )); then
 		code_sum="${RETVALS[1]}"
 	else
 		code_sum="${RETVAL}"
 	fi
-	local result=$(normalize_exit_status "${code_sum}")
+	local result=$(agnor_format_exit_status "${code_sum}")
 	for code in "${(@)RETVALS[2,-1]}"; do
-		result="${result}|$(normalize_exit_status "$code")"
+		result="${result}|$(agnor_format_exit_status "$code")"
 		code_sum=$(( code_sum + code ))
 	done
 	
@@ -137,122 +92,93 @@ prompt_retval_status() { # Return Value: (✘ <codes> / ✘ <code> / ✘ SIG<sig
 	result="${pre_result}"
 
 	if (( code_sum > 0 )); then
-		agnor_prompt_add_segment red white "$(print_icon FAIL_ICON) ${result}"
+		agnor_prompt_full $1 009 "$(print_icon FAIL_ICON) ${result}"
 	else
-		agnor_prompt_add_segment green white "$(print_icon OK_ICON)"
+		agnor_prompt_full $1 green "$(print_icon OK_ICON)"
 	fi
 }
-prompt_retval_status_lite() { # Return Value (Lite): (✘ <code> / ✘ SIG<sig>(<code>) / ✔)
+prompt_retval_status_simple() { # Return Value (Simple): (✘ <retval> / ✔)
 	if (( RETVAL > 0 )); then
-		agnor_prompt_add_segment red white "$(print_icon FAIL_ICON) $(normalize_exit_status "${RETVAL}")"
+		agnor_prompt_full $1 red "$(print_icon FAIL_ICON) $(agnor_format_exit_status "${RETVAL}")"
 	else
-		agnor_prompt_add_segment green white "$(print_icon OK_ICON)"
+		agnor_prompt_full $1 green "$(print_icon OK_ICON)"
 	fi
 }
 
-
-prompt_root_status() { # Status of root: (⚡ / )
-	if [[ ${(%):-%#} == '#' ]]; then
-		agnor_prompt_add_segment black yellow "$(print_icon ROOT_ICON)"
-	elif [[ -n $SUDO_COMMAND ]]; then
-		agnor_prompt_add_segment black yellow "$(print_icon SUDO_ICON)"
-	fi
-}
-prompt_jobs_status() { # Status of jobs: (⚙ <count> / ⚙)
+prompt_jobs_status() { # Status of jobs: [ ⚙ <count> / ⚙ ]
 	local jobs_count="${$(jobs -l | wc -l)// /}"
 	local wrong_lines="$(jobs -l | awk '/pwd now/{ count++ } END {print count}')"
 	if (( wrong_lines > 0 )); then
 		jobs_count=$(( jobs_count - wrong_lines ))
 	fi
 	if (( jobs_count > 0 )); then
-		agnor_prompt_add_segment cyan white "$(print_icon BACKGROUND_JOBS_ICON)"
+		agnor_prompt_start $1 cyan "$(print_icon BACKGROUND_JOBS_ICON)"
 		if (( jobs_count > 1 )); then
-			agnor_prompt_raw_segment " ${jobs_count}"
+			echo -n " ${jobs_count}"
 		fi
+		agnor_prompt_end $1
 	fi
 }
-
-prompt_context() { # Context: ((ssh) <user>@<hostname> / (screen) <user>@<hostname> / (tmux) <user>@<hostname> / <user>@<hostname>)
-	local shell_deep=${(%):-%L}
-	[[ shell_deep -gt 1 ]] && agnor_prompt_add_segment black default "${shell_deep}"
-	
+prompt_context() { # Context: [ (ssh/screen/tmux) ⚡ /  <user>@<hostname> ]
+	local string="$(agnor_get_user_context)"
 	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
-		agnor_prompt_add_segment black yellow "(ssh) %(!..%{%F{default}%})${USERNAME}@%m"
+		[[ -n "$string" ]] && string=" ${string}"
+		agnor_prompt_full $1 yellow "(ssh)${string}"
 	elif [[ -n $STY ]]; then
-		agnor_prompt_add_segment black white "(screen) %(!.%{%F{yellow}%}.)${USERNAME}@%m"
+		[[ -n "$string" ]] && string=" ${string}"
+		agnor_prompt_full $1 default "(screen)${string}"
 	elif [[ -n $TMUX ]]; then
+		[[ -n "$string" ]] && string=" ${string}"
 		local session_name="$(tmux display-message -p '#S')"
 		if [[ -n $session_name ]]; then
-			agnor_prompt_add_segment black magenta "(tmux@${session_name}) %(!.%{%F{yellow}%}.%{%F{default}%})${USERNAME}@%m"
+			agnor_prompt_full $1 013 "(tmux@${session_name})${string}"
 		else
-			agnor_prompt_add_segment black magenta "(tmux) %(!.%{%F{yellow}%}.%{%F{default}%})${USERNAME}@%m"
+			agnor_prompt_full $1 013 "(tmux)${string}"
 		fi
-	elif [[ $USERNAME != $DEFAULT_USER ]]; then
-		agnor_prompt_add_segment black white "%(!.%{%F{yellow}%}.)${USERNAME}@%m"
+	elif [[ -n "$string" ]]; then
+		agnor_prompt_full $1 default "${string}"
 	fi
 }
 
-
-prompt_dir() { # Dir: ( / WO) + (PWD)
-	local icon r w
-	[[ -r "$PWD" ]] && r=true || r=false
-	[[ -w "$PWD" ]] && w=true || w=false
-	
-	if [[ $r == true && $w == true ]]; then
-		# pass
-	elif [[ $r == true ]]; then
-		icon="%{%F{yellow}%}$(print_icon LOCK_ICON)%{%F{default}%} "
-	elif [[ $w == true ]]; then
+prompt_dir() { # Dir: [  / WO <pwd> ]
+	local icon
+	if [[ -r "$PWD" ]]; then
+		if [[ ! -w "$PWD" ]]; then
+			icon="%{%F{yellow}%}$(print_icon LOCK_ICON)%{%f%} "
+		fi
+	elif [[ -w "$PWD" ]]; then
 		icon="WO "
 	else
 		icon="$(print_icon LOCK_ICON) "
 	fi
-	agnor_prompt_add_segment blue white "${icon}${PWD/#$HOME/~}"
+	agnor_prompt_full $1 blue "${icon}${PWD/#$HOME/~}"
 }
-prompt_dir_lite() { # Dir (Lite): () + (PWD)
+prompt_dir_simple() { # Dir (Simple): [  <pwd> ]
 	local icon
 	[[ ! -w "$PWD" ]] && icon="$(print_icon LOCK_ICON) "
-	agnor_prompt_add_segment blue white "${icon}${PWD/#$HOME/~}"
+	agnor_prompt_full $1 blue "${icon}${PWD/#$HOME/~}"
 }
-prompt_dir_simple() { # Dir (Simple): (PWD)
-	agnor_prompt_add_segment blue white "${PWD/#$HOME/~}"
-}
-
-prompt_time() { # System time
-	agnor_prompt_add_segment black default "$(primt_icon TIME_ICON) %D{%H:%M:%S}"
-}
-prompt_date() { # System date
-	agnor_prompt_add_segment white black "$(print_icon DATE_ICON) %D{%d.%m.%y}"
+prompt_dir_simpler() { # Dir (Simpler): [ <pwd> ]
+	agnor_prompt_full $1 blue "${PWD/#$HOME/~}"
 }
 
-# hg root >/dev/null 2>/dev/null && echo '☿' && return
+prompt_time() { # System time: [ HH:MM:SS ]
+	agnor_prompt_full $1 white "$(print_icon TIME_ICON) %D{%H:%M:%S}"
+}
+prompt_date() { # System date: [ dd.mm.yy ]
+	agnor_prompt_full $1 white "$(print_icon DATE_ICON) %D{%d.%m.%y}"
+}
+prompt_tty() { # $TTY: [ <tty> ]
+	agnor_prompt_full $1 white "%y"
+}
 
 
 prompt_async() { # Prompt all async data
-	if (( $#AGNOR_ASYNC_SEGMENTS > 0 )); then
-		agnor_prompt_raw_segment $AGNOR_ASYNC_SEGMENTS
+	if [[ -n $AGNOR_ASYNC_DATA ]]; then
+		echo -n $AGNOR_ASYNC_DATA
 	fi
 }
 
-prompt_newline() {
-	agnor_prompt_raw_segment $AGNOR_COMMAND_NL
-}
-prompt_shell_chars() { # ($ / #) ❯
-	agnor_prompt_raw_segment $AGNOR_COMMAND_RAW
-	agnor_prompt_raw_segment ' %(!.#.$) ❯'
-}
-
-
-# Git statuses: #  master ☗ tag ↑12 ✔ <B>  |>  12… 3•1± 3‒1± 12✚ ⚑  |>  origin ↓2
-	# - Branch () or detached head (➦)
-	# - Dirty working directory state (orange (dirty) / green (✔))
-	# - Current branch / SHA1 in detached head state
-	# - Remote branch name (if you're tracking a remote branch)
-	# - Number of commit ahead HEAD and behind remote tracking branch (remote tracking segment will be magenta if merge/rebase is needed)
-	# - Stashes count
-	# - <B> - Bisect state on the current branch
-	# - >M< - Merge state on the current branch
-	# - >R> - Rebase state on the current branch
 prompt_async_git() { # Git: branch/detached head, dirty status
 	(( $+commands[git] )) || return
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
@@ -261,7 +187,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		if [[ AGNOR_GIT_SHOW_SEGMENT_STASH != false ]]; then
 			local stashes=$(git stash list -n1 | wc -l)
 			if [[ stashes -ne 0 ]]; then
-				agnor_async_prompt_add_segment white black "+$stashes$(print_icon ETC_ICON)" # ⚙
+				agnor_prompt_full $1 white "+${stashes}$(print_icon ETC_ICON)" # ⚙
 			fi
 		fi
 		
@@ -283,96 +209,98 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		fi
 		
 		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then # [EXPERIMENT]
-			agnor_async_prompt_add_segment red white # diverged state
+			agnor_prompt_start $1 red # diverged state
 		elif [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]]; then
-			agnor_async_prompt_add_segment magenta white # merge/rebase is needed
+			agnor_prompt_start $1 magenta # merge/rebase is needed
 		elif [[ -n $dirty ]]; then
-			agnor_async_prompt_add_segment yellow black
+			agnor_prompt_start $1 yellow
 		else
-			agnor_async_prompt_add_segment green white # black
+			agnor_prompt_start $1 green # black
 		fi
 		
-		agnor_async_prompt_raw_segment "${ref_symbol} ${ref}"
+		echo -n "${ref_symbol} ${ref}"
 		
 		local tag=$(git describe --exact-match --tags 2> /dev/null)
-		[[ -n $tag ]] && agnor_async_prompt_raw_segment " ☗ ${tag}"
+		[[ -n $tag ]] && echo -n " ☗ ${tag}"
 		
-		[[ ahead -ne 0 ]] && agnor_async_prompt_raw_segment " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		[[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]] && agnor_async_prompt_raw_segment " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		[[ ahead -ne 0 ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
+		[[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		
-		[[ ! -n $dirty ]] && agnor_async_prompt_raw_segment " $(print_icon OK_ICON)" # ✔
+		[[ ! -n $dirty ]] && echo -n " $(print_icon OK_ICON)" # ✔
 		
 		local git_dir=$(git rev-parse --git-dir 2>/dev/null)
 		if [[ -e "${git_dir}/BISECT_LOG" ]]; then # Modes
-			agnor_async_prompt_raw_segment " <B>"
+			echo -n " <B>"
 		elif [[ -e "${git_dir}/MERGE_HEAD" ]]; then
-			agnor_async_prompt_raw_segment " >M<"
+			echo -n " >M<"
 		elif [[ -e "${git_dir}/rebase" || -e "${git_dir}/../.dotest" ]]; then
-			agnor_async_prompt_raw_segment " >R>"
+			echo -n " >R>"
 		elif [[ -e "${git_dir}/rebase-merge" ]]; then
 			if [[ -e "${git_dir}/rebase-merge/interactive" ]]; then
-				agnor_async_prompt_raw_segment " >R[i]>"
+				echo -n " >R[i]>"
 			else
-				agnor_async_prompt_raw_segment " >R[m]>"
+				echo -n " >R[m]>"
 			fi
 		elif [[ -e "${git_dir}/rebase-apply" ]]; then
 			if [[ -e "${git_dir}/rebase-apply/rebasing" ]]; then
-				agnor_async_prompt_raw_segment " >R>"
+				echo -n " >R>"
 			elif [[ -e "${git_dir}/rebase-apply/applying" ]]; then
-				agnor_async_prompt_raw_segment " <A<"
+				echo -n " <A<"
 			else
-				agnor_async_prompt_raw_segment " <A</>R>"
+				echo -n " <A</>R>"
 			fi
 		elif [[ -e "${git_dir}/CHERRY_PICK_HEAD" ]]; then
-			agnor_async_prompt_raw_segment " <C<"
+			echo -n " <C<"
 		elif [[ -e "${git_dir}/REVERT_HEAD" ]]; then
-			agnor_async_prompt_raw_segment " [Revert]"
+			echo -n " [Revert]"
 		elif local result=$(local todo; if [[ -r "${git_dir}/sequencer/todo" ]] && read todo < "${git_dir}/sequencer/todo"; then
 				case "$todo" in (p[\ \	]|pick[\ \	]*) echo -n "<C<" ;; (revert[\ \	]*) echo -n "[Revert]" ;; esac
 			fi) && [[ -n ${result} ]]; then
 			# see if a cherry-pick or revert is in progress, if the user has committed a
 			# conflict resolution with 'git commit' in the middle of a sequence of picks or
 			# reverts then CHERRY_PICK_HEAD/REVERT_HEAD will not exist so we have to read the todo file.
-			agnor_async_prompt_raw_segment " ${result}"
+			echo -n " ${result}"
 		fi
 		
 		(){
 			local porcelain=$(git status --porcelain 2> /dev/null)
 			
 			local num_untracked=$(echo $porcelain | grep -c "^??")
-			[[ num_untracked -gt 0 ]] && agnor_async_prompt_raw_segment " $num_untracked\u2026"
+			[[ num_untracked -gt 0 ]] && echo -n " $num_untracked\u2026"
 
 			local num_added=$(echo $porcelain | grep -c "^A")
-			[[ num_added -gt 0 ]] && agnor_async_prompt_raw_segment " $num_added✚"
+			[[ num_added -gt 0 ]] && echo -n " $num_added✚"
 
 			local modified num_modified=$(echo $porcelain | grep -c "^.M") num_cached_modified=$(echo $porcelain | grep -c "^M") num_cached_renamed=$(echo $porcelain | grep -c "^R")
 			[[ num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
 			[[ num_cached_modified -gt 0 || num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
-			agnor_async_prompt_raw_segment ${modified}
+			echo -n ${modified}
 
 			local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_cached_deleted=$(echo $porcelain | grep -c "^D")
 			[[ num_deleted -gt 0 ]] && deleted=" $num_deleted‒"
 			[[ num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
-			agnor_async_prompt_raw_segment ${deleted}
+			echo -n ${deleted}
 			
-			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_deleted -gt 0 ]] && agnor_async_prompt_raw_segment ' ⚑'
+			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_deleted -gt 0 ]] && echo -n ' ⚑'
 		}
+		agnor_prompt_end $1
 		
 		if [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
 			if [[ $behind -ne 0 ]]; then
-				agnor_async_prompt_add_segment magenta white # merge/rebase is needed
+				agnor_prompt_start $1 magenta # merge/rebase is needed
 			else
-				agnor_async_prompt_add_segment cyan black
+				agnor_prompt_start $1 cyan
 			fi
-			agnor_async_prompt_raw_segment "\uE0A0 ${remote}" #  # VCS_BRANCH_ICON
-			[[ $behind -ne 0 ]] && agnor_async_prompt_raw_segment " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+			echo -n "\uE0A0 ${remote}" #  # VCS_BRANCH_ICON
+			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+			agnor_prompt_end $1
 		fi
 		
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
-			agnor_prompt_add_segment cyan black "bare repo"
+			agnor_prompt_full $1 cyan "bare repo"
 		else
-			agnor_prompt_add_segment cyan black "GIT_DIR!"
+			agnor_prompt_full $1 cyan "GIT_DIR!"
 		fi
 	fi
 }
@@ -407,7 +335,7 @@ prompt_git_remote() {
 		remote_status="--"
 	fi
 
-	agnor_prompt_add_segment cyan $fg "⏏ $remote $remote_status"
+	agnor_prompt_full $1 $fg "⏏ $remote $remote_status"
 }
 prompt_async_bzr() { # Bzr: (bzr@<revision> ✚)
 	(( $+commands[bzr] )) || return
@@ -417,11 +345,11 @@ prompt_async_bzr() { # Bzr: (bzr@<revision> ✚)
 		local revision=$(bzr revno)
 		local bzr_status=$(bzr status | head -n1)
 		if (( $(echo $bzr_status | grep "modified" | wc -m) > 0 )); then
-			agnor_async_prompt_add_segment yellow black "bzr@${revision} ✚"
+			agnor_prompt_full $1 yellow "bzr@${revision} ✚"
 		elif (( $(echo $bzr_status | wc -m) > 0 )); then
-			agnor_async_prompt_add_segment yellow black "bzr@${revision}"
+			agnor_prompt_full $1 yellow "bzr@${revision}"
 		else
-			agnor_async_prompt_add_segment green white "bzr@${revision}"
+			agnor_prompt_full $1 green "bzr@${revision}"
 		fi
 	fi
 }
@@ -432,70 +360,79 @@ prompt_async_hg() { # Mercurial: (☿ <revision>@<branch> ±)
 		local dirty
 		if ( hg prompt >/dev/null 2>&1 ); then
 			if [[ $(hg prompt "{status|unknown}") == "?" ]]; then # files are not added
-				agnor_async_prompt_add_segment red white
+				agnor_prompt_start $1 red
 				dirty='±'
 			elif [[ -n $(hg prompt "{status|modified}") ]]; then # any modification
-				agnor_async_prompt_add_segment yellow black
+				agnor_prompt_start $1 yellow
 				dirty='±'
 			else # working copy is clean
-				agnor_async_prompt_add_segment green white
+				agnor_prompt_start $1 green
 			fi
 			# $'\u263F' # ☿ # VCS_BOOKMARK_ICON
-			agnor_async_prompt_raw_segment $(hg prompt "☿ {rev}@{branch}") $dirty
+			echo -n $(hg prompt "☿ {rev}@{branch}") $dirty
+			agnor_prompt_end $1
 		else
 			local rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
 			local branch=$(hg id -b 2>/dev/null)
 			if $(hg st | grep -q "^\?"); then # files are not added
-				agnor_async_prompt_add_segment red white
+				agnor_prompt_start $1 red
 				dirty='±'
 			elif $(hg st | grep -q "^[MA]"); then # any modification
-				agnor_async_prompt_add_segment yellow black
+				agnor_prompt_start $1 yellow
 				dirty='±'
 			else
-				agnor_async_prompt_add_segment green white
+				agnor_prompt_start $1 green
 			fi
-			agnor_async_prompt_raw_segment "☿ ${rev}@${branch} ${dirty}"
+			echo -n "☿ ${rev}@${branch} ${dirty}"
+			agnor_prompt_end $1
 		fi
 	fi
 }
-# CVS,.svn
+# cdv !cvs darcs fossil mtn p4 svk !svn tla
+
+
+prompt_newline() {
+	echo -n "%{%f%K{008}%}%E\n%{%k%}"
+}
+prompt_shell_chars() { # ($ / #) ❯
+	echo -n ' %(!.#.$) ❯'
+}
+
 
 function build_prompt() {
 	RETVAL=$?
 	RETVALS=( "$pipestatus[@]" )
 	AGNOR_SEGMENTS=()
 	
-	prompt_retval_status
-	prompt_root_status
-	prompt_jobs_status
-	# prompt_virtualenv
-	# prompt_aws
-	prompt_context
+	echo -n "%{%K{008}%}"
+	prompt_retval_status left
+	prompt_jobs_status left
+	prompt_context left
+	prompt_dir left
 	
-	prompt_dir
-	prompt_async # GIT
+	prompt_async # Git Hg Bzr
 	
-	prompt_newline
-	prompt_shell_chars
-	
-	agnor_prompt_segments
+	prompt_newline left
+	prompt_shell_chars left
+}
+function build_rprompt() {
+	echo -n "%{%K{008}%}"
+	prompt_tty right
 }
 
+function agnor_async_response() {
+	AGNOR_ASYNC_DATA="$(<&$1)"
+	if [[ -n $AGNOR_ASYNC_DATA ]]; then
+		zle && zle reset-prompt
+	fi
+	zle -F $1
+	exec {1}<&-
+}
 function agnor_setup(){ # Setup
 	autoload -Uz add-zsh-hook
 	AGNOR_ASYNC_NEEDED=${AGNOR_ASYNC_NEEDED:-true}
 	AGNOR_GIT_SHOW_SEGMENT_REMOTE=${AGNOR_GIT_SHOW_SEGMENT_REMOTE:-true}
 	AGNOR_GIT_SHOW_SEGMENT_STASH=${AGNOR_GIT_SHOW_SEGMENT_STASH:-true}
-	
-	function agnor_async_response() {
-		local ASYNC_DATA="$(<&$1)"
-		if [[ -n $ASYNC_DATA ]]; then
-			AGNOR_ASYNC_SEGMENTS=("${(f)ASYNC_DATA}")
-			zle && zle reset-prompt
-		fi
-		zle -F $1
-		exec {1}<&-
-	}
 	
 	local start_time=$SECONDS
 	function agnor_hook_preexec() {
@@ -503,13 +440,13 @@ function agnor_setup(){ # Setup
 	}
 	function agnor_hook_precmd() {
 		# Async
-		AGNOR_ASYNC_SEGMENTS=()
+		AGNOR_ASYNC_DATA=''
 		if [[ $AGNOR_ASYNC_NEEDED == true ]]; then
 			[[ -n $AGNOR_ASYNC_FD ]] && zle -F $AGNOR_ASYNC_FD 2>/dev/null
 			exec {AGNOR_ASYNC_FD}< <(
-				prompt_async_git
-				# prompt_async_bzr
-				# prompt_async_hg
+				prompt_async_git left
+				# prompt_async_bzr left
+				# prompt_async_hg left
 			)
 			zle -F $AGNOR_ASYNC_FD agnor_async_response
 		fi
@@ -522,13 +459,13 @@ function agnor_setup(){ # Setup
 				local remainder=$(( elapsed_time % 3600 ))
 				local timer_minutes=$(( remainder / 60 ))
 				local timer_seconds=$(( remainder % 60 ))
-				print -P "%B%F{red}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%b%f"
+				print -P "%{%B%F{red}%}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%{%b%f%}"
 			elif [[ elapsed_time -ge 60 ]]; then
 				local timer_minutes=$(( elapsed_time / 60 ))
 				local timer_seconds=$(( elapsed_time % 60 ))
-				print -P "%B%F{yellow}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%b%f"
+				print -P "%{%B%F{yellow}%}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%{%b%f%}"
 			elif [[ elapsed_time -gt 10 ]]; then
-				print -P "%B%F{green}>>> elapsed time ${elapsed_time}s%b%f"
+				print -P "%{%B%F{green}%}>>> elapsed time ${elapsed_time}s%{%b%f%}"
 			fi
 			start_time=0
 		fi
@@ -536,31 +473,33 @@ function agnor_setup(){ # Setup
 	add-zsh-hook preexec agnor_hook_preexec
 	add-zsh-hook precmd agnor_hook_precmd
 	
-	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
-		zle && { zle reset-prompt; zle -R }
-	}
-	
-	RPROMPT='%y'
+	# TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
+		# zle && { zle reset-prompt; zle -R }
+	# }
 	
 	PROMPT='%{%f%b%k%}$(build_prompt) '
 	PROMPT2='%(1_.%_.-)> '
 	PROMPT3='#?> '
 	
-	# PROMPT4='+ %N:%i>'
+	# PROMPT4='+ %N:%i> '
 	typeset -g agnor_prompt4_fix_symbol='%e'
-	PROMPT4='%F{yellow}${(l:${(S%)agnor_prompt4_fix_symbol}::+:)} %F{blue}%N%F{242}:%i:%I>%f '
+	PROMPT4='%{%F{yellow}%}${(l:${(S%)agnor_prompt4_fix_symbol}::+:)} %{%F{blue}%}%N%{%F{242}%}:%i:%I> %{%f%}'
 	
-	#TIMEFMT=$'%J:\nuser: %U system: %S total: %E cpu: %P'
 	TIMEFMT=$'user: %U system: %S total: %E cpu: %P  %J'
-	REPORTTIME=1
 	# TIMEFMT=$'%J:\n    user:\t%U\n    system:\t%S\n    total:\t%E\n    cpu:\t%P'
+	REPORTTIME=1
 	
-	# SPROMPT="[ZSH]: Correct '%R' to '%r' [nyae]?"
-	# SPROMPT="%{%F{yellow}%B%}[ZSH]: Correct '%{%F{red}%B%}%R%{%f%b%}%{%F{yellow}%B%}' to '%{%F{green}%b%}%r%{%f%}%{%F{yellow}%B%}' [nyae]? %f"
 	SPROMPT="%{%F{yellow}%B%}[ZSH]: Correct '%{%F{red}%}%R%{%F{yellow}%}' to '%{%F{green}%b%}%r%{%F{yellow}%B%}' [nyae]? %{%f%}"
+	WATCHFMT="[%U%D %T%u]  %{%B%}%n%{%b%} has %a %{%B%}%l%{%b%} from %{%B%{%M%{%b%}."
 	
-	# POSTEDIT=`echotc se`
-
+	(){
+		local LC_ALL="" LC_CTYPE="en_US.UTF-8" # Set the right locale to protect special characters
+		RPROMPT_PREFIX=$'%{\e[1A%}' # one line up
+		RPROMPT_SUFFIX=$'%{\e[1B%}' # one line down
+	}
+	RPROMPT='%y'
+	RPROMPT="$RPROMPT_PREFIX"'%{%f%b%k%}$(build_rprompt)%{%E%}'"$RPROMPT_SUFFIX"
+	# RPROMPT='%{%f%b%k%}$(build_rprompt)%{%E%}'
 }
 agnor_setup "$@"
 
