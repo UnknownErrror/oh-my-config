@@ -49,3 +49,4 @@ Run `chfont` to change the font, or run:
 ```shell
 ~/.termux/fonts.sh
 ```
+
