@@ -17,11 +17,11 @@ ZSH_SPECTRUM_TEXT=${ZSH_SPECTRUM_TEXT:-Arma virumque cano Troiae qui primus ab o
 
 function spectrum_ls() { # Show all 256 colors with color number
 	for code in {000..255}; do
-		print -P -- "$code: %{$FG[$code]%}$ZSH_SPECTRUM_TEXT%{$reset_color%}"
+		print -P -- "$code: %{%F{$code}%}$ZSH_SPECTRUM_TEXT%{$reset_color%}"
 	done
 }
 function spectrum_bls() { # Show all 256 colors where the background is set to specific color
 	for code in {000..255}; do
-		print -P -- "$code: %{$BG[$code]%}$ZSH_SPECTRUM_TEXT%{$reset_color%}"
+		print -P -- "$code: %{%K{$code}%}$ZSH_SPECTRUM_TEXT%{$reset_color%}"
 	done
 }
