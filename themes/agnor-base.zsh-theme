@@ -10,7 +10,6 @@ function agnor_parse_git_dirty() { # Checks if working tree is dirty
 	[[ AGNOR_GIT_STATUS_IGNORE_SUBMODULES != "git" ]] && FLAGS+="--ignore-submodules=${AGNOR_GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
 	[[ -n $(git status ${FLAGS} 2>/dev/null) ]] && echo '*'
 }
-
 function agnor_format_exit_status() {
 	local RETVAL=$1
 	if (( RETVAL <= 128 )); then
@@ -21,7 +20,6 @@ function agnor_format_exit_status() {
 		echo "SIG${signals[$idx]}(${sig})"
 	fi
 }
-
 function agnor_get_user_context() { # Context: ((ssh/screen/tmux) <user>@<hostname>)
 	local icon string
 	if [[ ${(%):-%#} == '#' ]]; then
@@ -35,14 +33,10 @@ function agnor_get_user_context() { # Context: ((ssh/screen/tmux) <user>@<hostna
 		string="%{%(!.%F{yellow}.%F{default})%}${USERNAME}"
 	fi
 	
-	if [[ -n "$string" ]]; then
-		if [[ -n "$icon" ]]; then
-			icon="${icon} "
-		fi
-		echo "${icon}${string}"
-	else
-		echo "${icon}"
+	if [[ -n "$string" ]] && [[ -n "$icon" ]]; then
+		icon="${icon} "
 	fi
+	echo "${icon}${string}"
 }
 
 ######################################
@@ -55,7 +49,6 @@ function agnor_prompt_full() {
 		echo -n "%{%F{$2}%} $3 \uE0B1"
 	fi
 }
-
 function agnor_prompt_start() {
 	if [[ "$1" == "right" ]]; then
 		echo -n " %{%F{$2}%}\uE0B3 $3"
@@ -99,7 +92,7 @@ prompt_retval_status() { # Return Value: (✘ <retvals> / ✘ <retval> / ✔)
 }
 prompt_retval_status_simple() { # Return Value (Simple): (✘ <retval> / ✔)
 	if (( RETVAL > 0 )); then
-		agnor_prompt_full $1 red "$(print_icon FAIL_ICON) $(agnor_format_exit_status "${RETVAL}")"
+		agnor_prompt_full $1 009 "$(print_icon FAIL_ICON) $(agnor_format_exit_status "${RETVAL}")"
 	else
 		agnor_prompt_full $1 green "$(print_icon OK_ICON)"
 	fi
@@ -119,6 +112,7 @@ prompt_jobs_status() { # Status of jobs: [ ⚙ <count> / ⚙ ]
 		agnor_prompt_end $1
 	fi
 }
+
 prompt_context() { # Context: [ (ssh/screen/tmux) ⚡ /  <user>@<hostname> ]
 	local string="$(agnor_get_user_context)"
 	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
@@ -139,6 +133,15 @@ prompt_context() { # Context: [ (ssh/screen/tmux) ⚡ /  <user>@<hostname> ]
 		agnor_prompt_full $1 default "${string}"
 	fi
 }
+prompt_context_simple() { # Context (Simple): [ (ssh) ⚡ /  <user>@<hostname> ]
+	local string="$(agnor_get_user_context)"
+	if [[ -n $SSH_CONNECTION ]] || [[ -n $SSH_CLIENT ]] || [[ -n $SSH_TTY ]]; then
+		[[ -n "$string" ]] && string=" ${string}"
+		agnor_prompt_full $1 yellow "(ssh)${string}"
+	elif [[ -n "$string" ]]; then
+		agnor_prompt_full $1 default "${string}"
+	fi
+}
 
 prompt_dir() { # Dir: [  / WO <pwd> ]
 	local icon
@@ -147,7 +150,7 @@ prompt_dir() { # Dir: [  / WO <pwd> ]
 			icon="%{%F{yellow}%}$(print_icon LOCK_ICON)%{%f%} "
 		fi
 	elif [[ -w "$PWD" ]]; then
-		icon="WO "
+		icon="%{%F{yellow}%}WO%{%f%} "
 	else
 		icon="$(print_icon LOCK_ICON) "
 	fi
@@ -168,6 +171,7 @@ prompt_time() { # System time: [ HH:MM:SS ]
 prompt_date() { # System date: [ dd.mm.yy ]
 	agnor_prompt_full $1 white "$(print_icon DATE_ICON) %D{%d.%m.%y}"
 }
+
 prompt_tty() { # $TTY: [ <tty> ]
 	agnor_prompt_full $1 white "%y"
 }
@@ -184,11 +188,9 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
 		local dirty=$(agnor_parse_git_dirty)
 		
-		if [[ AGNOR_GIT_SHOW_SEGMENT_STASH != false ]]; then
-			local stashes=$(git stash list -n1 | wc -l)
-			if [[ stashes -ne 0 ]]; then
-				agnor_prompt_full $1 white "+${stashes}$(print_icon ETC_ICON)" # ⚙
-			fi
+		local stashes=$(git stash list -n1 | wc -l)
+		if [[ stashes -ne 0 ]]; then
+			agnor_prompt_full $1 white "+${stashes}$(print_icon ETC_ICON)" # ⚙
 		fi
 		
 		local ref_symbol ref=$(git symbolic-ref HEAD 2>/dev/null)
@@ -208,10 +210,8 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 			behind=$(git rev-list HEAD..@{upstream} 2>/dev/null | wc -l)
 		fi
 		
-		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then # [EXPERIMENT]
+		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then
 			agnor_prompt_start $1 red # diverged state
-		elif [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]]; then
-			agnor_prompt_start $1 magenta # merge/rebase is needed
 		elif [[ -n $dirty ]]; then
 			agnor_prompt_start $1 yellow
 		else
@@ -224,7 +224,6 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		[[ -n $tag ]] && echo -n " ☗ ${tag}"
 		
 		[[ ahead -ne 0 ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
-		[[ AGNOR_GIT_SHOW_SEGMENT_REMOTE == false && behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 		
 		[[ ! -n $dirty ]] && echo -n " $(print_icon OK_ICON)" # ✔
 		
@@ -247,12 +246,12 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 			elif [[ -e "${git_dir}/rebase-apply/applying" ]]; then
 				echo -n " <A<"
 			else
-				echo -n " <A</>R>"
+				echo -n " <A/R>"
 			fi
 		elif [[ -e "${git_dir}/CHERRY_PICK_HEAD" ]]; then
 			echo -n " <C<"
 		elif [[ -e "${git_dir}/REVERT_HEAD" ]]; then
-			echo -n " [Revert]"
+			echo -n " <R<"
 		elif local result=$(local todo; if [[ -r "${git_dir}/sequencer/todo" ]] && read todo < "${git_dir}/sequencer/todo"; then
 				case "$todo" in (p[\ \	]|pick[\ \	]*) echo -n "<C<" ;; (revert[\ \	]*) echo -n "[Revert]" ;; esac
 			fi) && [[ -n ${result} ]]; then
@@ -273,7 +272,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 
 			local modified num_modified=$(echo $porcelain | grep -c "^.M") num_cached_modified=$(echo $porcelain | grep -c "^M") num_cached_renamed=$(echo $porcelain | grep -c "^R")
 			[[ num_modified -gt 0 ]] && modified=" $num_modified\u2022" # • ●
-			[[ num_cached_modified -gt 0 || num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified+num_cached_renamed))±"
+			[[ num_cached_modified -gt 0 || num_cached_renamed -gt 0 ]] && modified="${modified:= •}$((num_cached_modified + num_cached_renamed))±"
 			echo -n ${modified}
 
 			local deleted num_deleted=$(echo $porcelain | grep -c "^.D") num_cached_deleted=$(echo $porcelain | grep -c "^D")
@@ -281,12 +280,12 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 			[[ num_cached_deleted -gt 0 ]] && deleted="${deleted:= -}$num_cached_deleted±"
 			echo -n ${deleted}
 			
-			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_deleted -gt 0 ]] && echo -n ' ⚑'
+			[[ num_added -gt 0 || num_cached_modified -gt 0 || num_cached_renamed -gt 0 || num_cached_deleted -gt 0 ]] && echo -n ' ⚑'
 		}
 		agnor_prompt_end $1
 		
-		if [[ AGNOR_GIT_SHOW_SEGMENT_REMOTE != false && -n ${remote} ]]; then
-			if [[ $behind -ne 0 ]]; then
+		if [[ "f" == "t" && -n ${remote} ]]; then
+			if [[ behind -ne 0 ]]; then
 				agnor_prompt_start $1 magenta # merge/rebase is needed
 			else
 				agnor_prompt_start $1 cyan
@@ -295,6 +294,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 			agnor_prompt_end $1
 		fi
+		prompt_async_git_remotes $1
 		
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
@@ -304,39 +304,34 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		fi
 	fi
 }
-prompt_git_remotes() {
+prompt_async_git_remotes() {
 	eval "remotes=(`git remote | sed 's/\n/ /'`)"
 	for remote in $remotes; do
-		prompt_git_remote $remote
+		prompt_async_git_remote $1 $remote
 	done
 }
-prompt_git_remote() {
-	local remote_status
-	local remote=${1:-"origin"}
-	local fg=black
-	local current_branch=${$(git rev-parse --abbrev-ref HEAD)}
-	local remote_path=${$(git rev-parse --verify remotes\/${remote}\/${current_branch} --symbolic-full-name 2> /dev/null)}
+prompt_async_git_remote() {
+	local remote=${2:-"origin"}
+	local current_branch=$(git rev-parse --abbrev-ref HEAD)
+	local remote_path=$(git rev-parse --verify remotes\/${remote}\/${current_branch} --symbolic-full-name 2> /dev/null)
 
-	if [[ -n ${remote_path} ]] ; then
-		local ahead=$(git rev-list ${remote_path}..HEAD 2> /dev/null | wc -l | tr -d ' ')
-		local behind=$(git rev-list HEAD..${remote_path} 2> /dev/null | wc -l | tr -d ' ')
-
-		if [[ ahead -eq 0 && behind -eq 0 ]] ; then
-			remote_status="○ "
+	if [[ -n ${remote_path} ]]; then
+		local ahead=$(git rev-list ${remote_path}..HEAD 2>/dev/null | wc -l)
+		local behind=$(git rev-list HEAD..${remote_path} 2>/dev/null | wc -l)
+		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then
+			agnor_prompt_start $1 red # diverged state
+		elif [[ behind -ne 0 ]]; then
+			agnor_prompt_start $1 magenta # merge/rebase is needed
 		else
-			if [[ behind -gt 0 ]] ; then
-				fg=red
-			elif [[ ahead -gt 0 ]] ; then
-				fg=yellow
-			fi
-			remote_status="+${ahead} -${behind}"
+			agnor_prompt_start $1 cyan
 		fi
-	else
-		remote_status="--"
+		echo -n "⏏ ${remote}" # ⏏ | \uE0A0 # VCS_BRANCH_ICON
+		[[ ahead -ne 0 ]] && echo -n " \u2191${ahead}" # ↑ # VCS_OUTGOING_CHANGES_ICON
+		[[ behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
+		agnor_prompt_end $1
 	fi
-
-	agnor_prompt_full $1 $fg "⏏ $remote $remote_status"
 }
+
 prompt_async_bzr() { # Bzr: (bzr@<revision> ✚)
 	(( $+commands[bzr] )) || return
 	if ( bzr status -q >/dev/null 2>&1 ); then

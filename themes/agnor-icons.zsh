@@ -1,13 +1,12 @@
 () {
 	FONT_MODE=${FONT_MODE:-nerdfont} # Default: nerdfont
-	typeset -gAH agnor_icons
 	local LC_ALL='' LC_CTYPE='en_US.UTF-8' # Set the right locale to protect special characters
+	typeset -gAH agnor_icons
 	case $FONT_MODE in
-		nerdfont*|nf*) # nerd-font patched font required! See https://github.com/ryanoasis/nerd-fonts
+		nerdfont*|nf*) # Nerd-font patched font required! See https://github.com/ryanoasis/nerd-fonts
 			agnor_icons=(
 				LEFT_SEGMENT_SEPARATOR         $'\uE0B0' # 
 				RIGHT_SEGMENT_SEPARATOR        $'\uE0B2' # 
-				LEFT_SEGMENT_END_SEPARATOR     ' '       # Whitespace
 				LEFT_SUBSEGMENT_SEPARATOR      $'\uE0B1' # 
 				RIGHT_SUBSEGMENT_SEPARATOR     $'\uE0B3' # 
 				CARRIAGE_RETURN_ICON           $'\u21B5' # ↵
@@ -84,7 +83,6 @@
 			agnor_icons=(
 				LEFT_SEGMENT_SEPARATOR         $'\uE0B0' # 
 				RIGHT_SEGMENT_SEPARATOR        $'\uE0B2' # 
-				LEFT_SEGMENT_END_SEPARATOR     ' '       # Whitespace
 				LEFT_SUBSEGMENT_SEPARATOR      $'\uE0B1' # 
 				RIGHT_SUBSEGMENT_SEPARATOR     $'\uE0B3' # 
 				CARRIAGE_RETURN_ICON           $'\u21B5' # ↵
