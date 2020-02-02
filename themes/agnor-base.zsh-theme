@@ -65,6 +65,11 @@ function agnor_prompt_end() {
 ######################################
 ### Prompt components ###
 
+# red -> 009
+# green -> 010
+# yellow -> 011
+# magenta -> 013
+
 prompt_retval_status() { # Return Value: (✘ <retvals> / ✘ <retval> / ✔)
 	local code_sum code
 	if (( $#RETVALS > 1 )); then
@@ -211,7 +216,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		fi
 		
 		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then
-			agnor_prompt_start $1 red # diverged state
+			agnor_prompt_start $1 009 # diverged state
 		elif [[ -n $dirty ]]; then
 			agnor_prompt_start $1 yellow
 		else
@@ -284,7 +289,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 		}
 		agnor_prompt_end $1
 		
-		if [[ "f" == "t" && -n ${remote} ]]; then
+		if [[ -n ${remote} ]]; then
 			if [[ behind -ne 0 ]]; then
 				agnor_prompt_start $1 magenta # merge/rebase is needed
 			else
@@ -294,7 +299,7 @@ prompt_async_git() { # Git: branch/detached head, dirty status
 			[[ $behind -ne 0 ]] && echo -n " \u2193${behind}" # ↓ # VCS_INCOMING_CHANGES_ICON
 			agnor_prompt_end $1
 		fi
-		prompt_async_git_remotes $1
+		#prompt_async_git_remotes $1
 		
 	elif [[ $(git rev-parse --is-inside-git-dir 2>/dev/null) == true ]]; then
 		if [[ $(git rev-parse --is-bare-repository) == true ]]; then
@@ -319,7 +324,7 @@ prompt_async_git_remote() {
 		local ahead=$(git rev-list ${remote_path}..HEAD 2>/dev/null | wc -l)
 		local behind=$(git rev-list HEAD..${remote_path} 2>/dev/null | wc -l)
 		if [[ behind -ne 0 ]] && [[ ahead -ne 0 ]]; then
-			agnor_prompt_start $1 red # diverged state
+			agnor_prompt_start $1 009 # diverged state
 		elif [[ behind -ne 0 ]]; then
 			agnor_prompt_start $1 magenta # merge/rebase is needed
 		else
@@ -355,7 +360,7 @@ prompt_async_hg() { # Mercurial: (☿ <revision>@<branch> ±)
 		local dirty
 		if ( hg prompt >/dev/null 2>&1 ); then
 			if [[ $(hg prompt "{status|unknown}") == "?" ]]; then # files are not added
-				agnor_prompt_start $1 red
+				agnor_prompt_start $1 009
 				dirty='±'
 			elif [[ -n $(hg prompt "{status|modified}") ]]; then # any modification
 				agnor_prompt_start $1 yellow
@@ -370,7 +375,7 @@ prompt_async_hg() { # Mercurial: (☿ <revision>@<branch> ±)
 			local rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
 			local branch=$(hg id -b 2>/dev/null)
 			if $(hg st | grep -q "^\?"); then # files are not added
-				agnor_prompt_start $1 red
+				agnor_prompt_start $1 009
 				dirty='±'
 			elif $(hg st | grep -q "^[MA]"); then # any modification
 				agnor_prompt_start $1 yellow
@@ -397,7 +402,6 @@ prompt_shell_chars() { # ($ / #) ❯
 function build_prompt() {
 	RETVAL=$?
 	RETVALS=( "$pipestatus[@]" )
-	AGNOR_SEGMENTS=()
 	
 	echo -n "%{%K{008}%}"
 	prompt_retval_status left
@@ -425,9 +429,6 @@ function agnor_async_response() {
 }
 function agnor_setup(){ # Setup
 	autoload -Uz add-zsh-hook
-	AGNOR_ASYNC_NEEDED=${AGNOR_ASYNC_NEEDED:-true}
-	AGNOR_GIT_SHOW_SEGMENT_REMOTE=${AGNOR_GIT_SHOW_SEGMENT_REMOTE:-true}
-	AGNOR_GIT_SHOW_SEGMENT_STASH=${AGNOR_GIT_SHOW_SEGMENT_STASH:-true}
 	
 	local start_time=$SECONDS
 	function agnor_hook_preexec() {
@@ -436,15 +437,13 @@ function agnor_setup(){ # Setup
 	function agnor_hook_precmd() {
 		# Async
 		AGNOR_ASYNC_DATA=''
-		if [[ $AGNOR_ASYNC_NEEDED == true ]]; then
-			[[ -n $AGNOR_ASYNC_FD ]] && zle -F $AGNOR_ASYNC_FD 2>/dev/null
-			exec {AGNOR_ASYNC_FD}< <(
-				prompt_async_git left
-				# prompt_async_bzr left
-				# prompt_async_hg left
-			)
-			zle -F $AGNOR_ASYNC_FD agnor_async_response
-		fi
+		[[ -n $AGNOR_ASYNC_FD ]] && zle -F $AGNOR_ASYNC_FD 2>/dev/null
+		exec {AGNOR_ASYNC_FD}< <(
+			prompt_async_git left
+			# prompt_async_bzr left
+			# prompt_async_hg left
+		)
+		zle -F $AGNOR_ASYNC_FD agnor_async_response
 		
 		# Elapsed time
 		if [[ start_time -ne 0 ]]; then
@@ -454,13 +453,13 @@ function agnor_setup(){ # Setup
 				local remainder=$(( elapsed_time % 3600 ))
 				local timer_minutes=$(( remainder / 60 ))
 				local timer_seconds=$(( remainder % 60 ))
-				print -P "%{%B%F{red}%}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%{%b%f%}"
+				print -P "%{%F{009}%}>>> elapsed time ${timer_hours}h ${timer_minutes}m ${timer_seconds}s%{%f%}"
 			elif [[ elapsed_time -ge 60 ]]; then
 				local timer_minutes=$(( elapsed_time / 60 ))
 				local timer_seconds=$(( elapsed_time % 60 ))
-				print -P "%{%B%F{yellow}%}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%{%b%f%}"
+				print -P "%{%F{011}%}>>> elapsed time ${timer_minutes}m ${timer_seconds}s%{%f%}"
 			elif [[ elapsed_time -gt 10 ]]; then
-				print -P "%{%B%F{green}%}>>> elapsed time ${elapsed_time}s%{%b%f%}"
+				print -P "%{%F{010}%}>>> elapsed time ${elapsed_time}s%{%f%}"
 			fi
 			start_time=0
 		fi
@@ -468,35 +467,33 @@ function agnor_setup(){ # Setup
 	add-zsh-hook preexec agnor_hook_preexec
 	add-zsh-hook precmd agnor_hook_precmd
 	
-	# TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
-		# zle && { zle reset-prompt; zle -R }
-	# }
-	
 	PROMPT='%{%f%b%k%}$(build_prompt) '
+	
+	# RPROMPT='%{%f%b%k%}$(build_rprompt)%{%E%}'
+	RPROMPT=$'%{\e[1A%f%b%k%}$(build_rprompt)%{%E\e[1B%}'
+}
+function agnor_setup_secondary(){ # Setup secondary PROMPTs and other
+	TRAPWINCH() { # Ensure that the prompt is redrawn when the terminal size changes.
+		zle && { zle reset-prompt; zle -R }
+	}
+	
 	PROMPT2='%(1_.%_.-)> '
 	PROMPT3='#?> '
 	
 	# PROMPT4='+ %N:%i> '
 	typeset -g agnor_prompt4_fix_symbol='%e'
 	PROMPT4='%{%F{yellow}%}${(l:${(S%)agnor_prompt4_fix_symbol}::+:)} %{%F{blue}%}%N%{%F{242}%}:%i:%I> %{%f%}'
-	
-	TIMEFMT=$'user: %U system: %S total: %E cpu: %P  %J'
+
 	# TIMEFMT=$'%J:\n    user:\t%U\n    system:\t%S\n    total:\t%E\n    cpu:\t%P'
+	TIMEFMT=$'user: %U system: %S total: %E cpu: %P  %J'
 	REPORTTIME=1
-	
+
 	SPROMPT="%{%F{yellow}%B%}[ZSH]: Correct '%{%F{red}%}%R%{%F{yellow}%}' to '%{%F{green}%b%}%r%{%F{yellow}%B%}' [nyae]? %{%f%}"
 	WATCHFMT="[%U%D %T%u]  %{%B%}%n%{%b%} has %a %{%B%}%l%{%b%} from %{%B%{%M%{%b%}."
-	
-	(){
-		local LC_ALL="" LC_CTYPE="en_US.UTF-8" # Set the right locale to protect special characters
-		RPROMPT_PREFIX=$'%{\e[1A%}' # one line up
-		RPROMPT_SUFFIX=$'%{\e[1B%}' # one line down
-	}
-	RPROMPT='%y'
-	RPROMPT="$RPROMPT_PREFIX"'%{%f%b%k%}$(build_rprompt)%{%E%}'"$RPROMPT_SUFFIX"
-	# RPROMPT='%{%f%b%k%}$(build_rprompt)%{%E%}'
 }
+
 agnor_setup "$@"
+agnor_setup_secondary "$@"
 
 function set-prompt() {
 	local top_left='%~'

@@ -25,3 +25,14 @@ function spectrum_bls() { # Show all 256 colors where the background is set to s
 		print -P -- "$code: %{%K{$code}%}$ZSH_SPECTRUM_TEXT%{$reset_color%}"
 	done
 }
+
+function spectrum_ls0() { # Show all basic colors with color number
+	for code in {000..015}; do
+		print -P -- "$code: %{%F{$code}%}$ZSH_SPECTRUM_TEXT%{$reset_color%}"
+	done
+}
+function spectrum_bls0() { # Show all basic colors where the background is set to specific color
+	for code in {000..015}; do
+		print -P -- "$code: %{%K{$code}%}$ZSH_SPECTRUM_TEXT%{$reset_color%}"
+	done
+}
